@@ -1,6 +1,0 @@
-Metadata-Version: 2.4
-Name: buildstamp
-Version: 0.1.0
-Summary: Build-time version metadata for Python packages.
-Requires-Python: >=3.10
-Requires-Dist: tomli>=2.0; python_version < "3.11"
