@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write   # create GitHub Release
+  id-token: write   # OIDC trusted publishing to PyPI
+
+jobs:
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Verify tag matches VERSION
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          FILE_VER="$(cat VERSION)"
+          if [[ "$TAG" != "$FILE_VER" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match VERSION ($FILE_VER)"
+            exit 1
+          fi
+
+      - name: Build stable sdist + wheel
+        run: |
+          uv pip install setuptools
+          uv pip install -e . --no-build-isolation
+          RELEASE_TYPE=stable uv build --no-build-isolation
+
+      - name: Verify dist
+        run: |
+          uv pip install twine
+          twine check dist/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/buildstamp/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish (trusted publishing — no token required)
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true

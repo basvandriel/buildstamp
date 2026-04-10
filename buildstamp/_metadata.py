@@ -5,7 +5,6 @@ import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass(frozen=True, slots=True)
@@ -13,14 +12,12 @@ class BuildMetadata:
     version: str
     quality: str
     commit: str
-    build_date: Optional[datetime]
+    build_date: datetime | None
 
 
 def _run_git(*args: str) -> str:
     try:
-        return subprocess.check_output(
-            ["git", *args], stderr=subprocess.DEVNULL, text=True
-        ).strip()
+        return subprocess.check_output(["git", *args], stderr=subprocess.DEVNULL, text=True).strip()
     except Exception:
         return "unknown"
 

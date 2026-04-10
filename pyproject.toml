@@ -1,11 +1,40 @@
 [project]
 name = "buildstamp"
 dynamic = ["version"]
-description = "Build-time version metadata for Python packages."
+description = "Build-time version metadata injection for Python packages."
+readme = "README.md"
+license = {file = "LICENSE"}
 requires-python = ">=3.10"
+keywords = ["versioning", "build", "metadata", "pep517", "setuptools"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Version Control",
+    "Typing :: Typed",
+]
 dependencies = [
     "tomli>=2.0; python_version < '3.11'",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff>=0.9",
+    "pyright>=1.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/basvandriel/buildstamp"
+Repository = "https://github.com/basvandriel/buildstamp"
+Issues = "https://github.com/basvandriel/buildstamp/issues"
+Changelog = "https://github.com/basvandriel/buildstamp/releases"
 
 [build-system]
 requires = ["setuptools>=64.0", "buildstamp"]
@@ -18,3 +47,18 @@ include = ["buildstamp*"]
 
 [tool.setuptools.dynamic]
 version = {file = "VERSION"}
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.pyright]
+pythonVersion = "3.10"
+strict = true
+include = ["buildstamp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

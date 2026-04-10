@@ -29,10 +29,16 @@ from pathlib import Path
 
 from setuptools.build_meta import (
     build_sdist as _build_sdist,
+)
+from setuptools.build_meta import (
     build_wheel as _build_wheel,
+)
+from setuptools.build_meta import (
     get_requires_for_build_editable,
     get_requires_for_build_sdist,
     get_requires_for_build_wheel,
+)
+from setuptools.build_meta import (
     prepare_metadata_for_build_wheel as _prepare_wheel,
 )
 
@@ -50,9 +56,7 @@ __all__ = [
 
 def _git(*args: str) -> str:
     try:
-        return subprocess.check_output(
-            ["git", *args], stderr=subprocess.DEVNULL, text=True
-        ).strip()
+        return subprocess.check_output(["git", *args], stderr=subprocess.DEVNULL, text=True).strip()
     except Exception:
         return "unknown"
 
@@ -80,12 +84,12 @@ def _read_config() -> tuple[Path, Path]:
     try:
         name = config["project"]["name"].replace("-", "_")
         return Path(name) / "_version.json", version_file
-    except KeyError:
+    except KeyError as exc:
         raise RuntimeError(
             "buildstamp: could not determine metadata file path. "
             "Add [tool.buildstamp] metadata-file = 'your_package/_version.json' "
             "to pyproject.toml."
-        )
+        ) from exc
 
 
 def write_version_file() -> None:
@@ -103,9 +107,7 @@ def write_version_file() -> None:
     base = version_file.read_text(encoding="utf-8").strip()
     raw = os.environ.get("RELEASE_TYPE", "dev").strip().lower()
     if raw not in ("dev", "rc", "stable"):
-        raise ValueError(
-            f"RELEASE_TYPE must be 'dev', 'rc', or 'stable' — got: {raw!r}"
-        )
+        raise ValueError(f"RELEASE_TYPE must be 'dev', 'rc', or 'stable' — got: {raw!r}")
     if raw == "stable":
         version = base
     elif raw == "rc":

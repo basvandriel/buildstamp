@@ -1,0 +1,120 @@
+"""Tests for buildstamp._metadata."""
+
+from __future__ import annotations
+
+import json
+from datetime import datetime
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
+from buildstamp._metadata import BuildMetadata, load_metadata
+
+# ---------------------------------------------------------------------------
+# BuildMetadata
+# ---------------------------------------------------------------------------
+
+
+def test_build_metadata_is_frozen() -> None:
+    meta = BuildMetadata(version="1.0.0", quality="dev", commit="abc1234", build_date=None)
+    with pytest.raises((AttributeError, TypeError)):
+        meta.version = "2.0.0"  # type: ignore[misc]
+
+
+def test_build_metadata_slots() -> None:
+    meta = BuildMetadata(version="1.0.0", quality="dev", commit="abc1234", build_date=None)
+    assert not hasattr(meta, "__dict__")
+
+
+# ---------------------------------------------------------------------------
+# load_metadata — git checkout path
+# ---------------------------------------------------------------------------
+
+
+def _make_pkg(root: Path, version: str = "1.2.3") -> Path:
+    """Create a minimal package tree under root and return the __init__.py path."""
+    pkg = root / "mypkg"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("")
+    (root / "VERSION").write_text(f"{version}\n")
+    return pkg / "__init__.py"
+
+
+def test_load_metadata_git_checkout(tmp_path: Path) -> None:
+    (tmp_path / ".git").mkdir()
+    init = _make_pkg(tmp_path)
+
+    with patch("buildstamp._metadata._run_git", return_value="abc1234"):
+        meta = load_metadata(init)
+
+    assert meta.version == "1.2.3+gabc1234"
+    assert meta.quality == "dev"
+    assert meta.commit == "abc1234"
+    assert meta.build_date is None
+
+
+def test_load_metadata_git_unknown_sha(tmp_path: Path) -> None:
+    """When git is not available, version should fall back to .dev0."""
+    (tmp_path / ".git").mkdir()
+    init = _make_pkg(tmp_path)
+
+    with patch("buildstamp._metadata._run_git", return_value="unknown"):
+        meta = load_metadata(init)
+
+    assert meta.version == "1.2.3.dev0"
+    assert meta.commit == "unknown"
+    assert meta.build_date is None
+
+
+def test_load_metadata_git_uses_version_file(tmp_path: Path) -> None:
+    (tmp_path / ".git").mkdir()
+    init = _make_pkg(tmp_path, version="2.0.0")
+
+    with patch("buildstamp._metadata._run_git", return_value="what"):
+        meta = load_metadata(init)
+
+    assert meta.version.startswith("2.0.0+g")
+
+
+# ---------------------------------------------------------------------------
+# load_metadata — artifact / installed package path
+# ---------------------------------------------------------------------------
+
+
+def test_load_metadata_from_version_json(tmp_path: Path) -> None:
+    """Without .git, metadata is read from _version.json."""
+    pkg = tmp_path / "mypkg"
+    pkg.mkdir()
+    init = pkg / "__init__.py"
+    init.write_text("")
+
+    build_date = "2026-04-10T12:00:00+00:00"
+    (pkg / "_version.json").write_text(
+        json.dumps(
+            {
+                "version": "1.2.3",
+                "quality": "stable",
+                "commit": "abc1234",
+                "build_date": build_date,
+            }
+        )
+    )
+
+    meta = load_metadata(init)
+
+    assert meta.version == "1.2.3"
+    assert meta.quality == "stable"
+    assert meta.commit == "abc1234"
+    assert meta.build_date == datetime.fromisoformat(build_date)
+
+
+def test_load_metadata_missing_json_raises(tmp_path: Path) -> None:
+    pkg = tmp_path / "mypkg"
+    pkg.mkdir()
+    init = pkg / "__init__.py"
+    init.write_text("")
+    # no _version.json, no .git
+
+    with pytest.raises((FileNotFoundError, OSError)):
+        load_metadata(init)
