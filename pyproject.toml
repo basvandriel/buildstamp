@@ -27,6 +27,7 @@ dev = [
     "pytest>=8",
     "ruff>=0.9",
     "pyright>=1.1",
+    "twine>=5",
 ]
 
 [project.urls]
@@ -36,7 +37,7 @@ Issues = "https://github.com/basvandriel/buildstamp/issues"
 Changelog = "https://github.com/basvandriel/buildstamp/releases"
 
 [build-system]
-requires = ["setuptools>=64.0", "buildstamp"]
+requires = ["setuptools>=64.0"]
 build-backend = "_build_backend"
 backend-path = ["."]
 
