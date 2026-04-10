@@ -45,7 +45,6 @@ jobs:
       - name: Build stable sdist + wheel
         run: |
           uv venv
-          uv pip install setuptools
           uv pip install -e . --no-build-isolation
           uv sync --all-groups 
           RELEASE_TYPE=stable uv build --no-build-isolation

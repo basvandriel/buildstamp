@@ -62,3 +62,8 @@ include = ["buildstamp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "setuptools>=82.0.1",
+]
