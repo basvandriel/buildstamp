@@ -3,8 +3,18 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
+      bump:
+        description: "Version bump type (none = release current VERSION as-is)"
+        type: choice
+        required: true
+        default: none
+        options:
+          - none
+          - patch
+          - minor
+          - major
       dry_run:
-        description: "Dry run — build and verify but do not publish or push the tag"
+        description: "Dry run — build and verify but do not publish or push"
         type: boolean
         default: false
 
@@ -33,20 +43,45 @@ jobs:
       - name: Install deps
         run: uv sync --extra dev
 
-      - name: Read version
+      - name: Configure git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Resolve and validate version
         id: read
         run: |
-          VERSION="$(cat VERSION)"
+          CURRENT="$(cat VERSION)"
+          MAJOR="$(echo "$CURRENT" | cut -d. -f1)"
+          MINOR="$(echo "$CURRENT" | cut -d. -f2)"
+          PATCH="$(echo "$CURRENT" | cut -d. -f3)"
+
+          case "${{ inputs.bump }}" in
+            major) VERSION="$((MAJOR+1)).0.0" ;;
+            minor) VERSION="${MAJOR}.$((MINOR+1)).0" ;;
+            patch) VERSION="${MAJOR}.${MINOR}.$((PATCH+1))" ;;
+            none)  VERSION="$CURRENT" ;;
+          esac
+
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Version: $VERSION"
+          echo "tag=v$VERSION"    >> "$GITHUB_OUTPUT"
+          echo "bumped=$([[ "$VERSION" != "$CURRENT" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "${{ inputs.bump == 'none' && 'Releasing current' || 'Bumping ${{ inputs.bump }}' }}: $CURRENT → $VERSION"
+
+      - name: Bump VERSION file
+        if: ${{ steps.read.outputs.bumped == 'true' }}
+        run: |
+          echo "${{ steps.read.outputs.version }}" > VERSION
+          git add VERSION
+          git commit -m "chore: bump version to ${{ steps.read.outputs.version }}"
+          git push origin HEAD:main
 
       - name: Check tag does not already exist
         if: ${{ !inputs.dry_run }}
         run: |
           TAG="${{ steps.read.outputs.tag }}"
           if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "::error::Tag $TAG already exists. Bump VERSION first."
+            echo "::error::Tag $TAG already exists."
             exit 1
           fi
 
@@ -60,8 +95,6 @@ jobs:
         if: ${{ !inputs.dry_run }}
         run: |
           TAG="${{ steps.read.outputs.tag }}"
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "$TAG" -m "Release $TAG"
           git push origin "$TAG"
 
