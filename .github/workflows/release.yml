@@ -42,6 +42,7 @@ jobs:
           echo "Version: $VERSION"
 
       - name: Check tag does not already exist
+        if: ${{ !inputs.dry_run }}
         run: |
           TAG="${{ steps.read.outputs.tag }}"
           if git rev-parse "$TAG" >/dev/null 2>&1; then
