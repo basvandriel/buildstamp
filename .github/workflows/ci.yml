@@ -14,11 +14,8 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-      - name: Install dev deps
-        run: |
-          uv venv
-          uv pip install setuptools
-          uv pip install -e ".[dev]" --no-build-isolation
+      - name: Install deps
+        run: uv sync --extra dev
       - run: uv run ruff check .
       - run: uv run ruff format --check .
 
@@ -30,11 +27,8 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-      - name: Install dev deps
-        run: |
-          uv venv
-          uv pip install setuptools
-          uv pip install -e ".[dev]" --no-build-isolation
+      - name: Install deps
+        run: uv sync --extra dev
       - run: uv run pyright buildstamp/
 
   test:
@@ -49,11 +43,8 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-      - name: Install (Python ${{ matrix.python-version }})
-        run: |
-          uv venv --python ${{ matrix.python-version }}
-          uv pip install setuptools
-          uv pip install -e ".[dev]" --no-build-isolation
+      - name: Install deps (Python ${{ matrix.python-version }})
+        run: uv sync --python ${{ matrix.python-version }} --extra dev
       - name: Run tests
         run: uv run pytest -v
 
@@ -65,16 +56,12 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+      - name: Install deps
+        run: uv sync --extra dev
       - name: Build sdist + wheel
-        run: |
-          uv venv
-          uv pip install setuptools
-          uv pip install -e . --no-build-isolation
-          uv build --no-build-isolation
+        run: RELEASE_TYPE=stable uv build --no-build-isolation
       - name: Check dist contents
-        run: |
-          uv pip install twine
-          twine check dist/*
+        run: uv run twine check dist/*
       - uses: actions/upload-artifact@v4
         with:
           name: dist

@@ -26,6 +26,9 @@ jobs:
 
       - uses: astral-sh/setup-uv@v5
 
+      - name: Install deps
+        run: uv sync --extra dev
+
       - name: Read version
         id: read
         run: |
@@ -43,15 +46,10 @@ jobs:
           fi
 
       - name: Build stable sdist + wheel
-        run: |
-          uv venv
-          uv pip install -e . --no-build-isolation
-          uv sync --all-groups 
-          RELEASE_TYPE=stable uv build --no-build-isolation
+        run: RELEASE_TYPE=stable uv build --no-build-isolation
 
       - name: Verify dist
-        run: |
-          uv run twine check dist/*
+        run: uv run twine check dist/*
 
       - name: Push tag
         if: ${{ !inputs.dry_run }}
