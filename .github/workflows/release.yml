@@ -109,8 +109,4 @@ jobs:
           tag_name: ${{ needs.build.outputs.tag }}
           files: dist/*
           generate_release_notes: true
-        if: ${{ inputs.dry_run }}
-        run: |
-          echo "::notice::Dry run complete — would have tagged ${{ steps.read.outputs.tag }}, published to PyPI, and created a GitHub Release."
-          ls -lh dist/
 
