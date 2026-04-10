@@ -1,5 +1,55 @@
 # Versioning
 
+## Motivation
+
+Most Python versioning tools are built around one assumption: **git tags are
+the version source of truth**. Tools like `setuptools-scm` derive the version
+from `git describe`, which requires a tag to exist before you can produce a
+clean version number. This creates ceremony — you need to tag before you can
+build, tags need to be pushed before CI works, and the version of your code in
+development is always expressed as an awkward distance from the last tag:
+`0.1.0.dev3+g701e4ca`.
+
+The deeper issue is that this conflates two separate concerns: **what commit
+is this** (a versioning question) and **is this ready to ship** (a releasing
+question). Mixing them means every release decision leaks into the commit
+history.
+
+### Inspiration: VS Code's `product.json`
+
+VS Code handles this differently. Their build system writes a `product.json`
+file into each artifact at build time — not generated from tags, not committed
+to the repo. It carries the exact commit, quality level (`stable` / `insider` /
+`exploration`), and build date baked in once at the moment the artifact is
+assembled. Running from source simply omits it; the application detects the
+absence and falls back gracefully.
+
+The key insight is the **separation**:
+- The source tree is always clean — no generated files committed
+- The artifact carries its own identity — no need to query git at runtime
+- Development and production are handled by different code paths with clear intent
+
+### What buildstamp adopts from that model
+
+- A `_version.json` file baked into the wheel at build time (analogous to `product.json`)
+- Gitignored — never committed, never stale in the repo
+- Runtime branches on a structural fact (`.git` present?) rather than file presence
+- Quality level (`dev` / `rc` / `stable`) is a build-time decision, not a
+  source-tree decision
+- The committed `VERSION` file is the human-controlled anchor — the only file
+  you touch when you decide "this body of work deserves a new number"
+
+### What buildstamp does differently from VS Code
+
+VS Code uses `git describe` internally and still relies on tags for stable
+releases. buildstamp removes that requirement entirely: the `VERSION` file
+replaces the tag. You cut a release by setting `RELEASE_TYPE=stable` and
+running the build — no tagging discipline required. This makes it practical
+for smaller projects and solo/small-team workflows where tag hygiene is
+overhead rather than value.
+
+---
+
 ## Vision
 
 The goal is a versioning system that:
