@@ -1,28 +1,44 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run — build and verify but do not publish or push the tag"
+        type: boolean
+        default: false
 
 permissions:
-  contents: write   # create GitHub Release
-  id-token: write   # OIDC trusted publishing to PyPI
+  contents: write  # push tag + create GitHub Release
+  id-token: write  # OIDC trusted publishing to PyPI
 
 jobs:
-  build:
-    name: Build distribution
+  release:
+    name: Tag, build, and publish
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/buildstamp/
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: astral-sh/setup-uv@v5
 
-      - name: Verify tag matches VERSION
+      - name: Read version
+        id: read
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          FILE_VER="$(cat VERSION)"
-          if [[ "$TAG" != "$FILE_VER" ]]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match VERSION ($FILE_VER)"
+          VERSION="$(cat VERSION)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION"
+
+      - name: Check tag does not already exist
+        run: |
+          TAG="${{ steps.read.outputs.tag }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $TAG already exists. Bump VERSION first."
             exit 1
           fi
 
@@ -37,41 +53,30 @@ jobs:
           uv pip install twine
           twine check dist/*
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
+      - name: Push tag
+        if: ${{ !inputs.dry_run }}
+        run: |
+          TAG="${{ steps.read.outputs.tag }}"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
 
-  publish-pypi:
-    name: Publish to PyPI
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/project/buildstamp/
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-      - name: Publish (trusted publishing — no token required)
+      - name: Publish to PyPI (trusted publishing)
+        if: ${{ !inputs.dry_run }}
         uses: pypa/gh-action-pypi-publish@release/v1
 
-  github-release:
-    name: Create GitHub Release
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v4
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        uses: softprops/action-gh-release@v2
         with:
-          name: dist
-          path: dist/
-      - uses: softprops/action-gh-release@v2
-        with:
+          tag_name: ${{ steps.read.outputs.tag }}
           files: dist/*
           generate_release_notes: true
-          fail_on_unmatched_files: true
+
+      - name: Dry run summary
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "::notice::Dry run complete — would have tagged ${{ steps.read.outputs.tag }}, published to PyPI, and created a GitHub Release."
+          ls -lh dist/
+
