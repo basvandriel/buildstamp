@@ -34,7 +34,7 @@ jobs:
       version: ${{ steps.read.outputs.version }}
       tag: ${{ steps.read.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -51,34 +51,22 @@ jobs:
       - name: Resolve and validate version
         id: read
         run: |
-          CURRENT="$(cat VERSION)"
-          MAJOR="$(echo "$CURRENT" | cut -d. -f1)"
-          MINOR="$(echo "$CURRENT" | cut -d. -f2)"
-          PATCH="$(echo "$CURRENT" | cut -d. -f3)"
-
-          case "${{ inputs.bump }}" in
-            major) VERSION="$((MAJOR+1)).0.0" ;;
-            minor) VERSION="${MAJOR}.$((MINOR+1)).0" ;;
-            patch) VERSION="${MAJOR}.${MINOR}.$((PATCH+1))" ;;
-            none)  VERSION="$CURRENT" ;;
-          esac
-
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=v$VERSION"    >> "$GITHUB_OUTPUT"
-          echo "bumped=$([[ "$VERSION" != "$CURRENT" ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          if [[ "$VERSION" == "$CURRENT" ]]; then
+          if [[ "${{ inputs.bump }}" == "none" ]]; then
+            VERSION="$(cat VERSION)"
             echo "Releasing current version: $VERSION"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "tag=v$VERSION"    >> "$GITHUB_OUTPUT"
+            echo "bumped=false"     >> "$GITHUB_OUTPUT"
           else
-            echo "Bumping ${{ inputs.bump }}: $CURRENT → $VERSION"
+            bash scripts/bump_version.sh "${{ inputs.bump }}"
           fi
 
-      - name: Bump VERSION file
+      - name: Commit VERSION bump
         if: ${{ steps.read.outputs.bumped == 'true' }}
         run: |
-          echo "${{ steps.read.outputs.version }}" > VERSION
           git add VERSION
           git commit -m "chore: bump version to ${{ steps.read.outputs.version }}"
-          git push origin HEAD:main
+          git push origin HEAD:${{ github.ref_name }}
 
       - name: Check tag does not already exist
         if: ${{ !inputs.dry_run }}
