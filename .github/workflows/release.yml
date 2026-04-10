@@ -47,7 +47,7 @@ jobs:
           uv venv
           uv pip install setuptools
           uv pip install -e . --no-build-isolation
-          uv sync --all-groups --no-build-isolation
+          uv sync --all-groups 
           RELEASE_TYPE=stable uv build --no-build-isolation
 
       - name: Verify dist
