@@ -1,6 +1,6 @@
 [project]
 name = "buildstamp"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Build-time version metadata for Python packages."
 requires-python = ">=3.10"
 dependencies = [
@@ -8,9 +8,13 @@ dependencies = [
 ]
 
 [build-system]
-requires = ["setuptools>=64.0"]
-build-backend = "setuptools.build_meta"
+requires = ["setuptools>=64.0", "buildstamp"]
+build-backend = "_build_backend"
+backend-path = ["."]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["buildstamp*"]
+
+[tool.setuptools.dynamic]
+version = {file = "VERSION"}

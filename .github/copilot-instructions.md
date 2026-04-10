@@ -39,5 +39,19 @@ uv pip install -e /path/to/buildstamp
 uv pip install -e . --no-build-isolation
 ```
 
+## Current state (as of first release prep)
+- `buildstamp/__version__` added via `importlib.metadata.version("buildstamp")`
+- `uv.lock` + `.venv` created — now a proper uv project
+- `VERSION` = `0.1.0`, not yet tagged, not yet on PyPI
+- rsync-server is the only consumer, installed as `uv pip install -e ../buildstamp`
+- Pylance in rsync-server needs `python.analysis.extraPaths: ["/Users/bas/code/buildstamp"]` due to setuptools editable install finder not being followed by Pylance
+
+## Release checklist (first PyPI release)
+1. Ensure all changes committed
+2. `uv build` → produces `dist/buildstamp-0.1.0.tar.gz` and `.whl`
+3. `uv publish` → publishes to PyPI (needs `PYPI_TOKEN` or `~/.pypirc`)
+4. `git tag v0.1.0 && git push --tags`
+5. After on PyPI: rsync-server drops `--no-build-isolation` and `extraPaths`
+
 ## Python
-3.10+, uv managed venv if testing locally.
+3.10+, uv managed venv (`uv sync` to bootstrap).
