@@ -9,16 +9,20 @@ on:
         default: false
 
 permissions:
-  contents: write  # push tag + create GitHub Release
-  id-token: write  # OIDC trusted publishing to PyPI
+  contents: write  # push tag (build job)
 
 jobs:
-  release:
-    name: Tag, build, and publish
+  ci:
+    name: CI gate
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Build distribution
+    needs: ci
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/project/buildstamp/
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+      tag: ${{ steps.read.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -60,19 +64,51 @@ jobs:
           git tag "$TAG" -m "Release $TAG"
           git push origin "$TAG"
 
-      - name: Publish to PyPI (trusted publishing)
-        if: ${{ !inputs.dry_run }}
-        uses: pypa/gh-action-pypi-publish@release/v1
-
-      - name: Create GitHub Release
-        if: ${{ !inputs.dry_run }}
-        uses: softprops/action-gh-release@v2
+      - uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ steps.read.outputs.tag }}
-          files: dist/*
-          generate_release_notes: true
+          name: dist
+          path: dist/
 
       - name: Dry run summary
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "::notice::Dry run complete — would have tagged ${{ steps.read.outputs.tag }}, published to PyPI, and created a GitHub Release."
+          ls -lh dist/
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/buildstamp/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: Create GitHub Release
+    needs: build
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.build.outputs.tag }}
+          files: dist/*
+          generate_release_notes: true
         if: ${{ inputs.dry_run }}
         run: |
           echo "::notice::Dry run complete — would have tagged ${{ steps.read.outputs.tag }}, published to PyPI, and created a GitHub Release."
