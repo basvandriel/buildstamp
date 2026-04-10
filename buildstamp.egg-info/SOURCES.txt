@@ -1,0 +1,9 @@
+pyproject.toml
+buildstamp/__init__.py
+buildstamp/_metadata.py
+buildstamp/backend.py
+buildstamp.egg-info/PKG-INFO
+buildstamp.egg-info/SOURCES.txt
+buildstamp.egg-info/dependency_links.txt
+buildstamp.egg-info/requires.txt
+buildstamp.egg-info/top_level.txt
