@@ -16,8 +16,8 @@ jobs:
           enable-cache: true
       - name: Install dev deps
         run: |
-          uv pip install setuptools
-          uv pip install -e ".[dev]" --no-build-isolation
+          uv pip install --system setuptools
+          uv pip install --system -e ".[dev]" --no-build-isolation
       - run: ruff check .
       - run: ruff format --check .
 
@@ -31,8 +31,8 @@ jobs:
           enable-cache: true
       - name: Install dev deps
         run: |
-          uv pip install setuptools
-          uv pip install -e ".[dev]" --no-build-isolation
+          uv pip install --system setuptools
+          uv pip install --system -e ".[dev]" --no-build-isolation
       - run: pyright buildstamp/
 
   test:
@@ -49,10 +49,10 @@ jobs:
           enable-cache: true
       - name: Install (Python ${{ matrix.python-version }})
         run: |
-          uv pip install setuptools --python ${{ matrix.python-version }}
-          uv pip install -e ".[dev]" --no-build-isolation --python ${{ matrix.python-version }}
+          uv pip install --system setuptools --python ${{ matrix.python-version }}
+          uv pip install --system -e ".[dev]" --no-build-isolation --python ${{ matrix.python-version }}
       - name: Run tests
-        run: uv run --python ${{ matrix.python-version }} pytest -v
+        run: uv run --system --python ${{ matrix.python-version }} pytest -v
 
   build:
     name: Build distribution
@@ -64,12 +64,12 @@ jobs:
           enable-cache: true
       - name: Build sdist + wheel
         run: |
-          uv pip install setuptools
-          uv pip install -e . --no-build-isolation
+          uv pip install --system setuptools
+          uv pip install --system -e . --no-build-isolation
           uv build --no-build-isolation
       - name: Check dist contents
         run: |
-          uv pip install twine
+          uv pip install --system twine
           twine check dist/*
       - uses: actions/upload-artifact@v4
         with:
