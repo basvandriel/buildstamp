@@ -44,13 +44,14 @@ jobs:
 
       - name: Build stable sdist + wheel
         run: |
-          uv pip install --system setuptools
-          uv pip install --system -e . --no-build-isolation
+          uv venv
+          uv pip install setuptools
+          uv pip install -e . --no-build-isolation
           RELEASE_TYPE=stable uv build --no-build-isolation
 
       - name: Verify dist
         run: |
-          uv pip install --system twine
+          uv pip install twine
           twine check dist/*
 
       - name: Push tag
