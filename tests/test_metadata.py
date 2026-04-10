@@ -82,15 +82,15 @@ def test_load_metadata_git_uses_version_file(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_load_metadata_from_version_json(tmp_path: Path) -> None:
-    """Without .git, metadata is read from _version.json."""
+def test_load_metadata_from_build_json(tmp_path: Path) -> None:
+    """Without .git, metadata is read from _build.json."""
     pkg = tmp_path / "mypkg"
     pkg.mkdir()
     init = pkg / "__init__.py"
     init.write_text("")
 
     build_date = "2026-04-10T12:00:00+00:00"
-    (pkg / "_version.json").write_text(
+    (pkg / "_build.json").write_text(
         json.dumps(
             {
                 "version": "1.2.3",
@@ -114,7 +114,7 @@ def test_load_metadata_missing_json_raises(tmp_path: Path) -> None:
     pkg.mkdir()
     init = pkg / "__init__.py"
     init.write_text("")
-    # no _version.json, no .git
+    # no _build.json, no .git
 
     with pytest.raises((FileNotFoundError, OSError)):
         load_metadata(init)

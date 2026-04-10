@@ -5,7 +5,7 @@
 `buildstamp` is a reusable Python library providing:
 
 - **`buildstamp.backend`** — a PEP 517 build backend (wraps setuptools) that
-  writes `_version.json` at build time with version, quality, commit SHA, and
+  writes `_build.json` at build time with version, quality, commit SHA, and
   build date
 - **`buildstamp.load_metadata()`** — runtime helper that returns a
   `BuildMetadata` dataclass; branches on `.git` presence to give live git
@@ -39,7 +39,7 @@ dynamic = ["version"]
 version = {file = "VERSION"}
 
 [tool.setuptools.package-data]
-your_package = ["_version.json"]
+your_package = ["_build.json"]
 
 [build-system]
 requires = ["setuptools>=64.0", "wheel", "buildstamp"]
@@ -53,10 +53,10 @@ backend-path = ["."]
 from buildstamp.backend import *  # noqa: F401, F403
 ```
 
-**3. Add `_version.json` to `.gitignore`:**
+**3. Add `_build.json` to `.gitignore`:**
 
 ```
-your_package/_version.json
+your_package/_build.json
 ```
 
 **4. Use in `your_package/__init__.py`:**
@@ -86,11 +86,11 @@ Once buildstamp is on PyPI, the last two steps collapse to `pip install -e .`.
 ## Optional: configure paths in pyproject.toml
 
 By default buildstamp derives the metadata file path from `[project].name`
-(e.g. `rsync-server` → `rsync_server/_version.json`). To override:
+(e.g. `rsync-server` → `rsync_server/_build.json`). To override:
 
 ```toml
 [tool.buildstamp]
-metadata-file = "your_package/_version.json"
+metadata-file = "your_package/_build.json"
 version-file  = "VERSION"
 ```
 

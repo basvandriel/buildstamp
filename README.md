@@ -17,7 +17,7 @@ runtime.
 | Environment | Version source |
 |---|---|
 | Git checkout / editable install | Live: `git rev-parse` + `VERSION` file |
-| Installed artifact (no `.git`) | Baked: `_version.json` written at build time |
+| Installed artifact (no `.git`) | Baked: `_build.json` written at build time |
 
 The quality tier (`dev` / `rc` / `stable`) is controlled by the `RELEASE_TYPE`
 environment variable at build time, so no tag ceremony is needed and no branch
@@ -43,7 +43,7 @@ dynamic = ["version"]
 version = {file = "VERSION"}
 
 [tool.setuptools.package-data]
-your_package = ["_version.json"]
+your_package = ["_build.json"]
 
 [build-system]
 requires = ["setuptools>=64.0", "wheel", "buildstamp"]
@@ -51,10 +51,10 @@ build-backend = "_build_backend"
 backend-path = ["."]
 ```
 
-**3. Add `_version.json` to `.gitignore`:**
+**3. Add `_build.json` to `.gitignore`:**
 
 ```
-your_package/_version.json
+your_package/_build.json
 ```
 
 **4. Use in `your_package/__init__.py`:**

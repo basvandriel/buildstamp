@@ -31,7 +31,7 @@ The key insight is the **separation**:
 
 ### What buildstamp adopts from that model
 
-- A `_version.json` file baked into the wheel at build time (analogous to `product.json`)
+- A `_build.json` file baked into the wheel at build time (analogous to `product.json`)
 - Gitignored — never committed, never stale in the repo
 - Runtime branches on a structural fact (`.git` present?) rather than file presence
 - Quality level (`dev` / `rc` / `stable`) is a build-time decision, not a
@@ -59,7 +59,7 @@ The goal is a versioning system that:
 - **never runs git at import time in production** — metadata is baked into the
   built artifact; git is only called in development (`.git` present)
 - **puts all build-time logic in one place** — a custom PEP 517 backend
-  (`_build_backend.py`) is the single owner of `_version.json`; nothing else
+  (`_build_backend.py`) is the single owner of `_build.json`; nothing else
   writes it
 - **keeps the runtime simple** — `load_metadata()` makes one decision (`.git`
   present or not) and reads from one source
@@ -88,7 +88,7 @@ These are two distinct concerns that happen at different times:
 
 - Only relevant at build time, when cutting a wheel to hand to someone
 - Driven by the `RELEASE_TYPE` env var (`dev` / `rc` / `stable`)
-- Handled by `buildstamp.backend`, baked into `_version.json` once
+- Handled by `buildstamp.backend`, baked into `_build.json` once
 - Result: `quality = "stable"`, version string `0.1.0`
 
 `quality` is read-only at runtime — a fact baked in at build time. In a
@@ -139,7 +139,7 @@ There are no merge conflicts over `VERSION` because nobody else is touching it.
 
 Running `pip install -e .` triggers the PEP 517 backend once. The wheel
 version is read directly from the `VERSION` file by setuptools. `_build_backend.py`
-(which is a one-liner re-exporting `buildstamp.backend`) writes `_version.json`
+(which is a one-liner re-exporting `buildstamp.backend`) writes `_build.json`
 with the full runtime metadata before setuptools assembles the package.
 
 ```mermaid
@@ -148,17 +148,17 @@ sequenceDiagram
     participant pip as pip
     participant be  as _build_backend.py
     participant setup as setuptools
-    participant disk as your_package/_version.json
+    participant disk as your_package/_build.json
 
     dev->>pip: pip install -e .
     pip->>be: PEP 517 prepare_metadata_for_build_editable()
-    be->>disk: write _version.json (SHA + VERSION + quality + build_date)
+    be->>disk: write _build.json (SHA + VERSION + quality + build_date)
     pip->>setup: resolve dynamic version
     setup-->>pip: reads VERSION file → "0.1.0"
     pip-->>dev: installed (dist-info stamped with "0.1.0")
 ```
 
-After install, `_version.json` exists on disk but is never consulted again
+After install, `_build.json` exists on disk but is never consulted again
 during development — `.git` is present, so `load_metadata()` always uses live git.
 
 ---
@@ -176,7 +176,7 @@ flowchart TD
     C --> D[read VERSION file]
     D --> E["version    = {VERSION}+g{SHA}\nquality    = 'dev'\ncommit     = short SHA\nbuild_date = None"]
 
-    B -- no\nshipped artifact --> F[read your_package/_version.json]
+    B -- no\nshipped artifact --> F[read your_package/_build.json]
     F --> G["version    = baked version string\nquality    = baked quality\ncommit     = baked SHA\nbuild_date = baked UTC datetime"]
 ```
 
@@ -188,7 +188,7 @@ flowchart TD
 flowchart LR
     subgraph build ["Build time  (pip install / python -m build)"]
         ver[VERSION file] -->|read by| setup[setuptools → dist-info METADATA]
-        be[_build_backend.py] -->|writes| json[_version.json]
+        be[_build_backend.py] -->|writes| json[_build.json]
     end
 
     subgraph runtime ["Runtime  (import your_package)"]
@@ -199,7 +199,7 @@ flowchart LR
 ```
 
 `setuptools` and `load_metadata()` never interact. They both read `VERSION`
-and `_version.json` as plain data files at completely different moments.
+and `_build.json` as plain data files at completely different moments.
 
 ---
 
@@ -208,13 +208,13 @@ and `_version.json` as plain data files at completely different moments.
 ### Versioning and releasing are separated by design
 
 `load_metadata()` knows nothing about `RELEASE_TYPE`. `quality` is either
-read from `_version.json` (artifact) or hardcoded to `"dev"` (checkout).
+read from `_build.json` (artifact) or hardcoded to `"dev"` (checkout).
 The decision of what quality level a build is belongs entirely to the backend
 at build time. This keeps the runtime free of build-time concerns.
 
-### `.git` presence, not `_version.json` presence, as the branch condition
+### `.git` presence, not `_build.json` presence, as the branch condition
 
-The original design branched on whether `_version.json` existed. This caused
+The original design branched on whether `_build.json` existed. This caused
 a staleness problem: `pip install -e .` writes the JSON once, and it then goes
 out of date on every subsequent commit. `.git` presence fixes this — any
 checkout always computes live metadata.
@@ -227,7 +227,7 @@ One fewer file, one fewer concept.
 
 ### JSON, not Python, for runtime metadata
 
-`_version.json` has no import side-effects, is easy to inspect with any tool,
+`_build.json` has no import side-effects, is easy to inspect with any tool,
 and cannot accidentally execute code. It is the only artifact the backend
 produces.
 
@@ -287,6 +287,6 @@ No meaningful build date exists for a live checkout. `None` is honest.
 | File | Purpose |
 |---|---|
 | `VERSION` | Committed base version (`MAJOR.MINOR.PATCH`) — the only file you edit when bumping |
-| `your_package/_version.json` | Generated at build time; gitignored; carries runtime metadata |
+| `your_package/_build.json` | Generated at build time; gitignored; carries runtime metadata |
 | `_build_backend.py` | One-liner: `from buildstamp.backend import *` |
 | `scripts/release.py` | Manual release script — sets `RELEASE_TYPE` and triggers the build |

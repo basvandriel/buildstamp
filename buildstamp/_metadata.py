@@ -37,7 +37,7 @@ def load_metadata(package_file: str | Path) -> BuildMetadata:
 
     In a git checkout (development or editable install), metadata is computed
     live from git — always accurate, never stale. In an installed artifact
-    (no .git), it is read from _version.json baked in at build time.
+    (no .git), it is read from _build.json baked in at build time.
     """
     package_dir = Path(package_file).parent
     repo_root = package_dir.parent
@@ -48,7 +48,7 @@ def load_metadata(package_file: str | Path) -> BuildMetadata:
         version = f"{base}+g{sha}" if sha != "unknown" else f"{base}.dev0"
         return BuildMetadata(version=version, quality="dev", commit=sha, build_date=None)
 
-    meta = json.loads((package_dir / "_version.json").read_text(encoding="utf-8"))
+    meta = json.loads((package_dir / "_build.json").read_text(encoding="utf-8"))
     return BuildMetadata(
         version=meta["version"],
         quality=meta["quality"],

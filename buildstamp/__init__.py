@@ -4,7 +4,7 @@ try:
     _meta = load_metadata(__file__)
     __version__ = _meta.version
 except FileNotFoundError:
-    # No .git and no _version.json — we're being imported during a build step.
+    # No .git and no _build.json — we're being imported during a build step.
     _meta = None
     __version__ = "unknown"
 

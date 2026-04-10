@@ -4,4 +4,4 @@ __pycache__/
 dist/
 build/
 .venv/
-buildstamp/_version.json
+buildstamp/_build.json

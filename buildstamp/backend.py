@@ -15,7 +15,7 @@ buildstamp reads [tool.buildstamp] from pyproject.toml for configuration.
 If not present, the package name is derived from [project].name.
 
     [tool.buildstamp]
-    metadata-file = "your_package/_version.json"   # optional override
+    metadata-file = "your_package/_build.json"   # optional override
     version-file  = "VERSION"                       # optional override (default: VERSION)
 """
 
@@ -80,20 +80,20 @@ def _read_config() -> tuple[Path, Path]:
     if "metadata-file" in bs:
         return Path(bs["metadata-file"]), version_file
 
-    # Derive from [project].name: rsync-server → rsync_server/_version.json
+    # Derive from [project].name: rsync-server → rsync_server/_build.json
     try:
         name = config["project"]["name"].replace("-", "_")
-        return Path(name) / "_version.json", version_file
+        return Path(name) / "_build.json", version_file
     except KeyError as exc:
         raise RuntimeError(
             "buildstamp: could not determine metadata file path. "
-            "Add [tool.buildstamp] metadata-file = 'your_package/_version.json' "
+            "Add [tool.buildstamp] metadata-file = 'your_package/_build.json' "
             "to pyproject.toml."
         ) from exc
 
 
 def write_version_file() -> None:
-    """Write _version.json with build-time metadata.
+    """Write _build.json with build-time metadata.
 
     Called automatically by all PEP 517 hooks. Can also be called manually.
     """
