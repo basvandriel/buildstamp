@@ -37,7 +37,7 @@ Issues = "https://github.com/basvandriel/buildstamp/issues"
 Changelog = "https://github.com/basvandriel/buildstamp/releases"
 
 [build-system]
-requires = ["setuptools>=64.0"]
+requires = ["setuptools>=64.0", "buildstamp"]
 build-backend = "buildstamp.backend"
 
 [tool.setuptools.packages.find]
