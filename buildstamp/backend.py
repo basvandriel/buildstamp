@@ -124,7 +124,7 @@ def write_version_file() -> Path | None:
     Returns the path of the metadata file that was written, or None if no file
     needed to be written.
     """
-    metadata_file, version_file, bs = _read_config()
+    metadata_file, version_file, _bs = _read_config()
     commit = _git("rev-parse", "--short", "HEAD")
 
     # sdist → wheel: no .git dir, reuse the JSON baked in during the sdist step.
