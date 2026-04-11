@@ -105,9 +105,7 @@ def test_prepare_metadata_for_build_wheel_cleans_metadata_file_in_git_checkout(
         patch.object(backend, "_is_git_checkout", return_value=True),
         patch.object(backend, "_git", return_value="abc1234"),
         patch.object(backend, "_read_config", return_value=(metadata_file, version_file, {})),
-        patch.object(
-            backend, "_prepare_wheel", return_value="ok"
-        ) as prepare_wheel,
+        patch.object(backend, "_prepare_wheel", return_value="ok") as prepare_wheel,
     ):
         result = backend.prepare_metadata_for_build_wheel("metadata-dir", None)
 
