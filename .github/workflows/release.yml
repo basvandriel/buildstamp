@@ -18,6 +18,8 @@ on:
         type: boolean
         default: false
 
+run-name: "Release ${{ inputs.bump != 'none' && inputs.bump || 'current' }} version${{ inputs.dry_run && ' (dry run)' || '' }}"
+
 permissions:
   contents: write  # push tag (build job)
 
@@ -39,6 +41,8 @@ jobs:
           fetch-depth: 0
 
       - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
 
       - name: Install deps
         run: uv sync --extra dev
@@ -48,7 +52,7 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Bump version
+      - name: Resolve version
         id: version
         run: |
           if [[ "${{ inputs.bump }}" != "none" ]]; then
@@ -59,13 +63,6 @@ jobs:
             echo "tag=v$VERSION"    >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Commit VERSION bump
-        if: ${{ inputs.bump != 'none' }}
-        run: |
-          git add VERSION
-          git commit -m "chore: bump version to ${{ steps.version.outputs.version }}"
-          git push origin HEAD:${{ github.ref_name }}
-
       - name: Check tag does not already exist
         if: ${{ !inputs.dry_run }}
         run: |
@@ -73,6 +70,13 @@ jobs:
             echo "::error::Tag ${{ steps.version.outputs.tag }} already exists."
             exit 1
           fi
+
+      - name: Commit VERSION bump
+        if: ${{ inputs.bump != 'none' }}
+        run: |
+          git add VERSION
+          git commit -m "chore: bump version to ${{ steps.version.outputs.version }}"
+          git push origin HEAD:${{ github.ref_name }}
 
       - name: Build stable sdist + wheel
         run: RELEASE_TYPE=stable uv build --no-build-isolation
@@ -98,7 +102,7 @@ jobs:
           ls -lh dist/
 
   publish:
-    name: Publish
+    name: "Publish ${{ needs.build.outputs.version }} to PyPI"
     needs: build
     if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest

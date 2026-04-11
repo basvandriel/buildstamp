@@ -6,6 +6,10 @@ on:
   pull_request:
   workflow_call:  # allow release.yml to call this as a gate
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: Lint & format
@@ -61,7 +65,7 @@ jobs:
         run: uv sync --extra dev
       - name: Build sdist + wheel
         run: RELEASE_TYPE=stable uv build --no-build-isolation
-      - name: Check dist contents
+      - name: Verify dist
         run: uv run twine check dist/*
       - uses: actions/upload-artifact@v4
         with:
