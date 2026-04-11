@@ -143,6 +143,21 @@ backend. Tools like `bump2version`, `commitizen`, or a hand-rolled script
 (like `scripts/bump_version.py` in this repo) own that responsibility.
 buildstamp only handles the *injection* step.
 
+### Manual edits and downgrade risk
+
+`buildstamp` does not enforce monotonic versioning. If you edit `VERSION`
+by hand and lower the number, buildstamp will happily use that lower value.
+That means:
+
+- the generated artifact will be stamped with the downgraded version
+- PyPI publishing can fail if that version already exists
+- tag creation will fail if the git tag already exists
+- you may create confusing history if you later publish a version lower than
+  a previously released one
+
+If you want stronger safety, add a guard in your release script or CI that
+rejects non-incremental version changes.
+
 ### Multi-person projects
 
 With multiple contributors, the same rule applies — `VERSION` is not touched
