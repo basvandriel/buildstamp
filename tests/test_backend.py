@@ -102,7 +102,11 @@ def test_write_version_file_uses_dev_version_env_var(tmp_path: Path) -> None:
     with (
         patch.object(backend, "_git", return_value="abc1234"),
         patch.object(backend, "_read_config", return_value=(metadata_file, version_file, {})),
-        patch.dict(os.environ, {"BUILDSTAMP_DEV_VERSION": "{base}+g{sha}"}, clear=False),
+        patch.dict(
+            os.environ,
+            {"BUILDSTAMP_DEV_VERSION": "{base}+g{sha}", "RELEASE_TYPE": "dev"},
+            clear=False,
+        ),
     ):
         written = backend.write_version_file()
 
