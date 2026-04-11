@@ -59,7 +59,7 @@ The goal is a versioning system that:
 - **never runs git at import time in production** — metadata is baked into the
   built artifact; git is only called in development (`.git` present)
 - **puts all build-time logic in one place** — a custom PEP 517 backend
-  (`_build_backend.py`) is the single owner of `_build.json`; nothing else
+  (`buildstamp.backend`) is the single owner of `_build.json`; nothing else
   writes it
 - **keeps the runtime simple** — `load_metadata()` makes one decision (`.git`
   present or not) and reads from one source
@@ -138,15 +138,14 @@ There are no merge conflicts over `VERSION` because nobody else is touching it.
 ## How `pip install -e .` works in a consumer project
 
 Running `pip install -e .` triggers the PEP 517 backend once. The wheel
-version is read directly from the `VERSION` file by setuptools. `_build_backend.py`
-(which is a one-liner re-exporting `buildstamp.backend`) writes `_build.json`
-with the full runtime metadata before setuptools assembles the package.
+version is read directly from the `VERSION` file by setuptools. `buildstamp.backend`
+writes `_build.json` with the full runtime metadata before setuptools assembles the package.
 
 ```mermaid
 sequenceDiagram
     participant dev as Developer
     participant pip as pip
-    participant be  as _build_backend.py
+    participant be  as buildstamp.backend
     participant setup as setuptools
     participant disk as your_package/_build.json
 
@@ -188,7 +187,7 @@ flowchart TD
 flowchart LR
     subgraph build ["Build time  (pip install / python -m build)"]
         ver[VERSION file] -->|read by| setup[setuptools → dist-info METADATA]
-        be[_build_backend.py] -->|writes| json[_build.json]
+        be[buildstamp.backend] -->|writes| json[_build.json]
     end
 
     subgraph runtime ["Runtime  (import your_package)"]
@@ -288,5 +287,5 @@ No meaningful build date exists for a live checkout. `None` is honest.
 |---|---|
 | `VERSION` | Committed base version (`MAJOR.MINOR.PATCH`) — the only file you edit when bumping |
 | `your_package/_build.json` | Generated at build time; gitignored; carries runtime metadata |
-| `_build_backend.py` | One-liner: `from buildstamp.backend import *` |
+| `buildstamp.backend` | The build backend that writes `_build.json` before packaging |
 | `scripts/release.py` | Manual release script — sets `RELEASE_TYPE` and triggers the build |

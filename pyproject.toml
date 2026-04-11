@@ -38,8 +38,7 @@ Changelog = "https://github.com/basvandriel/buildstamp/releases"
 
 [build-system]
 requires = ["setuptools>=64.0"]
-build-backend = "_build_backend"
-backend-path = ["."]
+build-backend = "buildstamp.backend"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -1,16 +1,13 @@
 """PEP 517 build backend that injects VCS metadata at build time.
 
-Import all hooks from this module in your project's thin _build_backend.py:
-
-    from buildstamp.backend import *  # noqa: F401, F403
-
-Then in pyproject.toml:
+Use this module directly as the build backend in `pyproject.toml`:
 
     [build-system]
     requires = ["setuptools>=64.0", "wheel", "buildstamp"]
-    build-backend = "_build_backend"
-    backend-path = ["."]
+    build-backend = "buildstamp.backend"
 
+No `_build_backend.py` shim is required; the project root is already importable
+when running from the source checkout.
 buildstamp reads [tool.buildstamp] from pyproject.toml for configuration.
 If not present, the package name is derived from [project].name.
 

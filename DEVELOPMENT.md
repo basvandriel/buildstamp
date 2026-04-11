@@ -43,15 +43,10 @@ your_package = ["_build.json"]
 
 [build-system]
 requires = ["setuptools>=64.0", "wheel", "buildstamp"]
-build-backend = "_build_backend"
-backend-path = ["."]
+build-backend = "buildstamp.backend"
 ```
 
-**2. Create `_build_backend.py`** (one line) at the project root:
-
-```python
-from buildstamp.backend import *  # noqa: F401, F403
-```
+**2. Build normally** using the configured backend. No `_build_backend.py` shim is required.
 
 **3. Add `_build.json` to `.gitignore`:**
 

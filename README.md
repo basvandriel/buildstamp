@@ -27,13 +27,7 @@ names leak into artifacts.
 
 ## Quick start
 
-**1. Add a thin backend shim** — `_build_backend.py` at your project root:
-
-```python
-from buildstamp.backend import *  # noqa: F401, F403
-```
-
-**2. Configure `pyproject.toml`:**
+**1. Configure `pyproject.toml`:**
 
 ```toml
 [project]
@@ -47,9 +41,10 @@ your_package = ["_build.json"]
 
 [build-system]
 requires = ["setuptools>=64.0", "wheel", "buildstamp"]
-build-backend = "_build_backend"
-backend-path = ["."]
+build-backend = "buildstamp.backend"
 ```
+
+No `_build_backend.py` shim or extra backend-path is required.
 
 **3. Add `_build.json` to `.gitignore`:**
 
