@@ -89,6 +89,12 @@ metadata-file = "your_package/_build.json"
 version-file  = "VERSION"
 ```
 
+For dev artifact naming, use an environment variable:
+
+```sh
+BUILDSTAMP_DEV_VERSION="{base}+g{sha}" RELEASE_TYPE=dev python -m build
+```
+
 ---
 
 ## Cutting a release for buildstamp itself

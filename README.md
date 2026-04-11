@@ -44,6 +44,20 @@ requires = ["setuptools>=64.0", "wheel", "buildstamp"]
 build-backend = "buildstamp.backend"
 ```
 
+Optional buildstamp configuration:
+
+```toml
+[tool.buildstamp]
+metadata-file = "your_package/_build.json"
+version-file = "VERSION"
+```
+
+For dev artifact naming, use an environment variable instead of pyproject:
+
+```sh
+BUILDSTAMP_DEV_VERSION="{base}+g{sha}" RELEASE_TYPE=dev uv build
+```
+
 No `_build_backend.py` shim or extra backend-path is required.
 
 **3. Add `_build.json` to `.gitignore`:**
