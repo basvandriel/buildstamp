@@ -74,7 +74,7 @@ def _git(*args: str) -> str:
 
 
 def _read_config() -> tuple[Path, Path, dict[str, object]]:
-    """Return (metadata_file, version_file, config) from pyproject.toml."""
+    """Return (metadata_file, version_file, buildstamp_config) from pyproject.toml."""
     try:
         try:
             import tomllib
