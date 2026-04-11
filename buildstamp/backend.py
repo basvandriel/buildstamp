@@ -180,8 +180,11 @@ def _cleanup_metadata_file(metadata_file: Path | None) -> None:
 
 
 def prepare_metadata_for_build_wheel(metadata_directory, config_settings=None):
-    write_version_file()
-    return _prepare_wheel(metadata_directory, config_settings)
+    metadata_file = write_version_file()
+    try:
+        return _prepare_wheel(metadata_directory, config_settings)
+    finally:
+        _cleanup_metadata_file(metadata_file)
 
 
 def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):

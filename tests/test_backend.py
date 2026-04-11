@@ -93,6 +93,29 @@ def test_build_editable_force_write_in_git_checkout() -> None:
     write_file.assert_called_once()
 
 
+def test_prepare_metadata_for_build_wheel_cleans_metadata_file_in_git_checkout(
+    tmp_path: Path,
+) -> None:
+    metadata_file = tmp_path / "buildstamp" / "_build.json"
+    metadata_file.parent.mkdir(parents=True)
+    version_file = tmp_path / "VERSION"
+    version_file.write_text("1.0.0\n")
+
+    with (
+        patch.object(backend, "_is_git_checkout", return_value=True),
+        patch.object(backend, "_git", return_value="abc1234"),
+        patch.object(backend, "_read_config", return_value=(metadata_file, version_file, {})),
+        patch.object(
+            backend, "_prepare_wheel", return_value="ok"
+        ) as prepare_wheel,
+    ):
+        result = backend.prepare_metadata_for_build_wheel("metadata-dir", None)
+
+    assert result == "ok"
+    prepare_wheel.assert_called_once_with("metadata-dir", None)
+    assert not metadata_file.exists()
+
+
 def test_write_version_file_uses_dev_version_env_var(tmp_path: Path) -> None:
     metadata_file = tmp_path / "buildstamp" / "_build.json"
     metadata_file.parent.mkdir(parents=True)
