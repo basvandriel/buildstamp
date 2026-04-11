@@ -142,7 +142,14 @@ def write_version_file() -> Path | None:
         version = f"{base}rc1"
     else:
         dev_template = os.environ.get("BUILDSTAMP_DEV_VERSION", "{base}.dev0")
-        version = dev_template.format(base=base, sha=commit)
+        try:
+            version = dev_template.format(base=base, sha=commit)
+        except (KeyError, ValueError) as exc:
+            raise ValueError(
+                "BUILDSTAMP_DEV_VERSION must be a valid format string using only "
+                "the supported placeholders {base} and {sha} "
+                f"— got: {dev_template!r}"
+            ) from exc
 
     metadata_file.write_text(
         json.dumps(
