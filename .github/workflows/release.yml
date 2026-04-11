@@ -31,8 +31,8 @@ jobs:
     needs: ci
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.read.outputs.version }}
-      tag: ${{ steps.read.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -48,32 +48,29 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Resolve and validate version
-        id: read
+      - name: Bump version
+        id: version
         run: |
-          if [[ "${{ inputs.bump }}" == "none" ]]; then
+          if [[ "${{ inputs.bump }}" != "none" ]]; then
+            bash scripts/bump_version.sh "${{ inputs.bump }}"
+          else
             VERSION="$(cat VERSION)"
-            echo "Releasing current version: $VERSION"
             echo "version=$VERSION" >> "$GITHUB_OUTPUT"
             echo "tag=v$VERSION"    >> "$GITHUB_OUTPUT"
-            echo "bumped=false"     >> "$GITHUB_OUTPUT"
-          else
-            bash scripts/bump_version.sh "${{ inputs.bump }}"
           fi
 
       - name: Commit VERSION bump
-        if: ${{ steps.read.outputs.bumped == 'true' }}
+        if: ${{ inputs.bump != 'none' }}
         run: |
           git add VERSION
-          git commit -m "chore: bump version to ${{ steps.read.outputs.version }}"
+          git commit -m "chore: bump version to ${{ steps.version.outputs.version }}"
           git push origin HEAD:${{ github.ref_name }}
 
       - name: Check tag does not already exist
         if: ${{ !inputs.dry_run }}
         run: |
-          TAG="${{ steps.read.outputs.tag }}"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "::error::Tag $TAG already exists."
+          if git rev-parse "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "::error::Tag ${{ steps.version.outputs.tag }} already exists."
             exit 1
           fi
 
@@ -86,9 +83,8 @@ jobs:
       - name: Push tag
         if: ${{ !inputs.dry_run }}
         run: |
-          TAG="${{ steps.read.outputs.tag }}"
-          git tag "$TAG" -m "Release $TAG"
-          git push origin "$TAG"
+          git tag "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -98,11 +94,11 @@ jobs:
       - name: Dry run summary
         if: ${{ inputs.dry_run }}
         run: |
-          echo "::notice::Dry run complete — would have tagged ${{ steps.read.outputs.tag }}, published to PyPI, and created a GitHub Release."
+          echo "::notice::Dry run complete — would have tagged ${{ steps.version.outputs.tag }}, published to PyPI, and created a GitHub Release."
           ls -lh dist/
 
-  publish-pypi:
-    name: Publish to PyPI
+  publish:
+    name: Publish
     needs: build
     if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
@@ -110,6 +106,7 @@ jobs:
       name: pypi
       url: https://pypi.org/project/buildstamp/
     permissions:
+      contents: write
       id-token: write
     steps:
       - uses: actions/download-artifact@v4
@@ -117,19 +114,6 @@ jobs:
           name: release-dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
-
-  github-release:
-    name: Create GitHub Release
-    needs: build
-    if: ${{ !inputs.dry_run }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: release-dist
-          path: dist/
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.build.outputs.tag }}
