@@ -127,6 +127,22 @@ bump VERSION to 0.2.0
       └── python scripts/release.py   ← "0.2.0 is now shipped"
 ```
 
+### `VERSION` is the only version input buildstamp reads
+
+buildstamp does **not** calculate, derive, or validate version numbers. It
+does not inspect git tags, count commits since a tag, or infer what the
+"next" version should be. It reads whatever string is in `VERSION` and
+stamps it into the artifact, decorated with quality and git metadata.
+
+**You are responsible for writing the correct version into `VERSION` before
+you build.** buildstamp will use it exactly as-is.
+
+This is an intentional boundary. Version *authoring* (deciding `0.1.0` →
+`0.2.0`) is a human or CI-level decision that belongs outside the build
+backend. Tools like `bump2version`, `commitizen`, or a hand-rolled script
+(like `scripts/bump_version.py` in this repo) own that responsibility.
+buildstamp only handles the *injection* step.
+
 ### Multi-person projects
 
 With multiple contributors, the same rule applies — `VERSION` is not touched
