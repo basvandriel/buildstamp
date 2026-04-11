@@ -8,16 +8,31 @@ Use this module directly as the build backend in `pyproject.toml`:
 
 No `_build_backend.py` shim is required; the project root is already importable
 when running from the source checkout.
+
+When installing editable from a git checkout, buildstamp skips writing
+`_build.json` because runtime metadata is already available from git.
 buildstamp reads [tool.buildstamp] from pyproject.toml for configuration.
 If not present, the package name is derived from [project].name.
 
     [tool.buildstamp]
     metadata-file = "your_package/_build.json"   # optional override
     version-file  = "VERSION"                       # optional override (default: VERSION)
+
+For dev builds, override the generated artifact version via env var:
+
+    BUILDSTAMP_DEV_VERSION="{base}+g{sha}"
+
+The template supports `{base}` and `{sha}` placeholders.
+
+To force writing `_build.json` even in a git checkout (e.g. for
+debugging or baking metadata into an editable install):
+
+    BUILDSTAMP_FORCE_WRITE=1
 """
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import subprocess
@@ -58,8 +73,8 @@ def _git(*args: str) -> str:
         return "unknown"
 
 
-def _read_config() -> tuple[Path, Path]:
-    """Return (metadata_file, version_file) from pyproject.toml config."""
+def _read_config() -> tuple[Path, Path, dict[str, object]]:
+    """Return (metadata_file, version_file, buildstamp_config) from pyproject.toml."""
     try:
         try:
             import tomllib
@@ -75,12 +90,12 @@ def _read_config() -> tuple[Path, Path]:
     version_file = Path(bs.get("version-file", "VERSION"))
 
     if "metadata-file" in bs:
-        return Path(bs["metadata-file"]), version_file
+        return Path(bs["metadata-file"]), version_file, bs
 
     # Derive from [project].name: rsync-server → rsync_server/_build.json
     try:
         name = config["project"]["name"].replace("-", "_")
-        return Path(name) / "_build.json", version_file
+        return Path(name) / "_build.json", version_file, bs
     except KeyError as exc:
         raise RuntimeError(
             "buildstamp: could not determine metadata file path. "
@@ -89,28 +104,52 @@ def _read_config() -> tuple[Path, Path]:
         ) from exc
 
 
-def write_version_file() -> None:
+def _is_git_checkout() -> bool:
+    return Path(".git").exists()
+
+
+def _envvar_to_bool(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() not in ("", "0", "false", "no")
+
+
+def _force_write() -> bool:
+    return _envvar_to_bool("BUILDSTAMP_FORCE_WRITE")
+
+
+def write_version_file() -> Path | None:
     """Write _build.json with build-time metadata.
 
     Called automatically by all PEP 517 hooks. Can also be called manually.
+
+    Returns the path of the metadata file that was written, or None if no file
+    needed to be written.
     """
-    metadata_file, version_file = _read_config()
+    metadata_file, version_file, _bs = _read_config()
     commit = _git("rev-parse", "--short", "HEAD")
 
     # sdist → wheel: no .git dir, reuse the JSON baked in during the sdist step.
     if commit == "unknown" and metadata_file.exists():
-        return
+        return None
 
     base = version_file.read_text(encoding="utf-8").strip()
     raw = os.environ.get("RELEASE_TYPE", "dev").strip().lower()
     if raw not in ("dev", "rc", "stable"):
         raise ValueError(f"RELEASE_TYPE must be 'dev', 'rc', or 'stable' — got: {raw!r}")
+
     if raw == "stable":
         version = base
     elif raw == "rc":
         version = f"{base}rc1"
     else:
-        version = f"{base}.dev0"
+        dev_template = os.environ.get("BUILDSTAMP_DEV_VERSION", "{base}.dev0")
+        try:
+            version = dev_template.format(base=base, sha=commit)
+        except (KeyError, ValueError) as exc:
+            raise ValueError(
+                "BUILDSTAMP_DEV_VERSION must be a valid format string using only "
+                "the supported placeholders {base} and {sha} "
+                f"— got: {dev_template!r}"
+            ) from exc
 
     metadata_file.write_text(
         json.dumps(
@@ -126,23 +165,42 @@ def write_version_file() -> None:
         encoding="utf-8",
     )
 
+    return metadata_file
+
+
+def _cleanup_metadata_file(metadata_file: Path | None) -> None:
+    if metadata_file is None or not _is_git_checkout():
+        return
+
+    with contextlib.suppress(FileNotFoundError):
+        metadata_file.unlink()
+
 
 # --- PEP 517 hooks -----------------------------------------------------------
 
 
 def prepare_metadata_for_build_wheel(metadata_directory, config_settings=None):
-    write_version_file()
-    return _prepare_wheel(metadata_directory, config_settings)
+    metadata_file = write_version_file()
+    try:
+        return _prepare_wheel(metadata_directory, config_settings)
+    finally:
+        _cleanup_metadata_file(metadata_file)
 
 
 def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):
-    write_version_file()
-    return _build_wheel(wheel_directory, config_settings, metadata_directory)
+    metadata_file = write_version_file()
+    try:
+        return _build_wheel(wheel_directory, config_settings, metadata_directory)
+    finally:
+        _cleanup_metadata_file(metadata_file)
 
 
 def build_sdist(sdist_directory, config_settings=None):
-    write_version_file()
-    return _build_sdist(sdist_directory, config_settings)
+    metadata_file = write_version_file()
+    try:
+        return _build_sdist(sdist_directory, config_settings)
+    finally:
+        _cleanup_metadata_file(metadata_file)
 
 
 def prepare_metadata_for_build_editable(metadata_directory, config_settings=None):
@@ -150,12 +208,14 @@ def prepare_metadata_for_build_editable(metadata_directory, config_settings=None
         prepare_metadata_for_build_editable as _prepare_editable,
     )
 
-    write_version_file()
+    if not _is_git_checkout() or _force_write():
+        write_version_file()
     return _prepare_editable(metadata_directory, config_settings)
 
 
 def build_editable(wheel_directory, config_settings=None, metadata_directory=None):
     from setuptools.build_meta import build_editable as _build_editable
 
-    write_version_file()
+    if not _is_git_checkout() or _force_write():
+        write_version_file()
     return _build_editable(wheel_directory, config_settings, metadata_directory)
