@@ -8,6 +8,9 @@ Use this module directly as the build backend in `pyproject.toml`:
 
 No `_build_backend.py` shim is required; the project root is already importable
 when running from the source checkout.
+
+When installing editable from a git checkout, buildstamp skips writing
+`_build.json` because runtime metadata is already available from git.
 buildstamp reads [tool.buildstamp] from pyproject.toml for configuration.
 If not present, the package name is derived from [project].name.
 
@@ -89,6 +92,10 @@ def _read_config() -> tuple[Path, Path]:
         ) from exc
 
 
+def _is_git_checkout() -> bool:
+    return Path(".git").exists()
+
+
 def write_version_file() -> None:
     """Write _build.json with build-time metadata.
 
@@ -150,12 +157,14 @@ def prepare_metadata_for_build_editable(metadata_directory, config_settings=None
         prepare_metadata_for_build_editable as _prepare_editable,
     )
 
-    write_version_file()
+    if not _is_git_checkout():
+        write_version_file()
     return _prepare_editable(metadata_directory, config_settings)
 
 
 def build_editable(wheel_directory, config_settings=None, metadata_directory=None):
     from setuptools.build_meta import build_editable as _build_editable
 
-    write_version_file()
+    if not _is_git_checkout():
+        write_version_file()
     return _build_editable(wheel_directory, config_settings, metadata_directory)
