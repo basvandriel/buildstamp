@@ -10,15 +10,13 @@ from unittest.mock import patch
 
 import pytest
 
+from buildstamp._metadata import BuildMetadata, load_metadata
+
 
 @pytest.fixture(autouse=True)
 def clear_build_json_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("BUILDSTAMP_USE_BUILD_JSON", raising=False)
     monkeypatch.delenv("BUILDSTAMP_USE_BAKED_METADATA", raising=False)
-
-
-from buildstamp._metadata import BuildMetadata, load_metadata  # noqa: E402
-
 # ---------------------------------------------------------------------------
 # BuildMetadata
 # ---------------------------------------------------------------------------
