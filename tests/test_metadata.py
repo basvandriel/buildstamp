@@ -27,6 +27,19 @@ def test_build_metadata_slots() -> None:
     assert not hasattr(meta, "__dict__")
 
 
+def test_build_metadata_build_date_zone_conversion() -> None:
+    build_date = datetime.fromisoformat("2026-04-10T12:00:00+00:00")
+    meta = BuildMetadata(version="1.0.0", quality="stable", commit="abc1234", build_date=build_date)
+
+    local = meta.build_date_local
+    assert local is not None
+    assert local.timestamp() == build_date.timestamp()
+    assert local.tzinfo is not None
+
+    amsterdam = meta.build_date_in_zone("Europe/Amsterdam")
+    assert amsterdam.isoformat() == "2026-04-10T14:00:00+02:00"
+
+
 # ---------------------------------------------------------------------------
 # load_metadata — git checkout path
 # ---------------------------------------------------------------------------

@@ -5,6 +5,7 @@ import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 
 @dataclass(frozen=True, slots=True)
@@ -13,6 +14,19 @@ class BuildMetadata:
     quality: str
     commit: str
     build_date: datetime | None
+
+    @property
+    def build_date_local(self) -> datetime | None:
+        """Return the build date converted to the local system timezone."""
+        if self.build_date is None:
+            return None
+        return self.build_date.astimezone()
+
+    def build_date_in_zone(self, zone: str) -> datetime | None:
+        """Return the build date converted to the requested timezone."""
+        if self.build_date is None:
+            return None
+        return self.build_date.astimezone(ZoneInfo(zone))
 
 
 def _run_git(*args: str) -> str:
