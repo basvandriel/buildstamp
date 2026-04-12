@@ -5,3 +5,4 @@ dist/
 build/
 .venv/
 buildstamp/_build.json
+.env

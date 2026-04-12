@@ -94,6 +94,101 @@ __build_date__ = _meta.build_date
 | `quality` | `str` | `"dev"` | `RELEASE_TYPE` value |
 | `commit` | `str` | short SHA | short SHA baked at build time |
 | `build_date` | `datetime \| None` | `None` | UTC datetime |
+| `build_date_local` | `datetime \| None` | `None` | local timezone datetime |
+
+---
+
+## Inspect built metadata
+
+To verify the baked metadata in a release artifact without relying on runtime imports:
+
+1. Build the artifact:
+
+```sh
+RELEASE_TYPE=stable uv build --no-build-isolation
+```
+
+2. List the wheel contents and confirm `_build.json` is present:
+
+```sh
+unzip -l dist/buildstamp-*.whl | grep '_build.json'
+```
+
+3. Extract and pretty-print `_build.json` from the wheel:
+
+```sh
+unzip -p dist/buildstamp-*.whl buildstamp/_build.json | python -m json.tool
+```
+
+4. Optionally inspect the source distribution as well:
+
+```sh
+tar -tzf dist/buildstamp-*.tar.gz | grep 'buildstamp/_build.json'
+ tar -xOzf dist/buildstamp-*.tar.gz buildstamp/_build.json | python -m json.tool
+```
+
+5. Convert the stored UTC build timestamp to Amsterdam time:
+
+```sh
+python - <<'PY'
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+utc_dt = datetime.fromisoformat('2026-04-11T21:43:17.362671+00:00')
+print(utc_dt.astimezone(ZoneInfo('Europe/Amsterdam')).isoformat())
+PY
+```
+
+6. Verify the artifact format:
+
+```sh
+uv run twine check dist/*
+```
+
+That gives you a fully manual inspection path: the wheel is just a zip archive, `_build.json` is extracted directly, and the UTC build timestamp can be converted to local display time.
+### Optional in-repo runtime validation
+
+If you want to exercise the baked metadata path from inside a git checkout, first generate `_build.json` and keep it in the repo:
+
+```sh
+BUILDSTAMP_FORCE_WRITE=1 uv build --no-build-isolation
+```
+
+Then run Python with the baked-metadata override:
+
+```sh
+BUILDSTAMP_USE_BUILD_JSON=1 python - <<'PY'
+from buildstamp import load_metadata
+import buildstamp
+
+meta = load_metadata(buildstamp.__file__)
+print(meta)
+PY
+```
+
+`BUILDSTAMP_USE_BUILD_JSON` is the name to use for in-repo baked metadata testing.
+
+That lets you verify the same `_build.json`-based runtime behavior without leaving the checkout.
+## Inspect the installed artifact in Python runtime
+
+To verify the same baked metadata from an installed package, install the wheel into a fresh environment and use `load_metadata()`:
+
+```sh
+pip install dist/buildstamp-*.whl
+python - <<'PY'
+from buildstamp import load_metadata
+import buildstamp
+
+meta = load_metadata(buildstamp.__file__)
+print('version:', meta.version)
+print('quality:', meta.quality)
+print('commit:', meta.commit)
+print('build_date:', meta.build_date)
+print('local build_date:', meta.build_date_local)
+PY
+```
+
+If you run this inside the source checkout with `.git` present, `load_metadata()` will use live git metadata instead of the baked `_build.json`. That is why installing the wheel into a clean environment is the right way to verify the shipped artifact.
 
 ---
 

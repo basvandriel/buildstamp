@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from buildstamp.env import envvar_to_bool
+
 
 @dataclass(frozen=True, slots=True)
 class BuildMetadata:
@@ -13,6 +15,17 @@ class BuildMetadata:
     quality: str
     commit: str
     build_date: datetime | None
+
+    @property
+    def build_date_local(self) -> datetime | None:
+        """Return the build date converted to the local system timezone."""
+        if self.build_date is None:
+            return None
+        return self.build_date.astimezone()
+
+
+def _use_baked_metadata() -> bool:
+    return envvar_to_bool("BUILDSTAMP_USE_BUILD_JSON")
 
 
 def _run_git(*args: str) -> str:
@@ -42,10 +55,11 @@ def load_metadata(package_file: str | Path) -> BuildMetadata:
     package_dir = Path(package_file).parent
     repo_root = package_dir.parent
 
-    if (repo_root / ".git").exists():
+    if (repo_root / ".git").exists() and not _use_baked_metadata():
         base = (repo_root / "VERSION").read_text(encoding="utf-8").strip()
         sha = _run_git("rev-parse", "--short", "HEAD")
         version = f"{base}+g{sha}" if sha != "unknown" else f"{base}.dev0"
+
         return BuildMetadata(version=version, quality="dev", commit=sha, build_date=None)
 
     meta = json.loads((package_dir / "_build.json").read_text(encoding="utf-8"))

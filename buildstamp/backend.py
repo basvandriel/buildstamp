@@ -54,6 +54,8 @@ from setuptools.build_meta import (
     prepare_metadata_for_build_wheel as _prepare_wheel,
 )
 
+from buildstamp.env import envvar_to_bool, load_dotenv
+
 __all__ = [
     "build_editable",
     "build_sdist",
@@ -77,7 +79,7 @@ def _read_config() -> tuple[Path, Path, dict[str, object]]:
     """Return (metadata_file, version_file, buildstamp_config) from pyproject.toml."""
     try:
         try:
-            import tomllib
+            import tomllib  # type: ignore
         except ImportError:
             import tomli as tomllib  # type: ignore[no-redef]
 
@@ -108,12 +110,11 @@ def _is_git_checkout() -> bool:
     return Path(".git").exists()
 
 
-def _envvar_to_bool(name: str) -> bool:
-    return os.environ.get(name, "").strip().lower() not in ("", "0", "false", "no")
+load_dotenv(Path.cwd())
 
 
 def _force_write() -> bool:
-    return _envvar_to_bool("BUILDSTAMP_FORCE_WRITE")
+    return envvar_to_bool("BUILDSTAMP_FORCE_WRITE")
 
 
 def write_version_file() -> Path | None:
@@ -169,7 +170,7 @@ def write_version_file() -> Path | None:
 
 
 def _cleanup_metadata_file(metadata_file: Path | None) -> None:
-    if metadata_file is None or not _is_git_checkout():
+    if metadata_file is None or not _is_git_checkout() or _force_write():
         return
 
     with contextlib.suppress(FileNotFoundError):
