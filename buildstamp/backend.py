@@ -36,6 +36,7 @@ import contextlib
 import json
 import os
 import subprocess
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -66,6 +67,32 @@ __all__ = [
     "prepare_metadata_for_build_editable",
     "prepare_metadata_for_build_wheel",
 ]
+
+
+@dataclass(frozen=True, slots=True)
+class _BuildConfig:
+    """Parameter bundle for write_version_file().
+
+    All three fields come from environment variables that are conceptually
+    arguments to a single build operation. Collected here so the env-reading
+    logic and RELEASE_TYPE validation live in one place.
+    """
+
+    release_type: str
+    dev_version_template: str
+    force_write: bool
+
+    @classmethod
+    def from_env(cls) -> _BuildConfig:
+        load_dotenv(Path.cwd())
+        raw = os.environ.get("RELEASE_TYPE", "dev").strip().lower()
+        if raw not in ("dev", "rc", "stable"):
+            raise ValueError(f"RELEASE_TYPE must be 'dev', 'rc', or 'stable' — got: {raw!r}")
+        return cls(
+            release_type=raw,
+            dev_version_template=os.environ.get("BUILDSTAMP_DEV_VERSION", "{base}.dev0"),
+            force_write=envvar_to_bool("BUILDSTAMP_FORCE_WRITE"),
+        )
 
 
 def _git(*args: str) -> str:
@@ -110,14 +137,7 @@ def _is_git_checkout() -> bool:
     return Path(".git").exists()
 
 
-load_dotenv(Path.cwd())
-
-
-def _force_write() -> bool:
-    return envvar_to_bool("BUILDSTAMP_FORCE_WRITE")
-
-
-def write_version_file() -> Path | None:
+def write_version_file(cfg: _BuildConfig | None = None) -> Path | None:
     """Write _build.json with build-time metadata.
 
     Called automatically by all PEP 517 hooks. Can also be called manually.
@@ -125,6 +145,8 @@ def write_version_file() -> Path | None:
     Returns the path of the metadata file that was written, or None if no file
     needed to be written.
     """
+    if cfg is None:
+        cfg = _BuildConfig.from_env()
     metadata_file, version_file, _bs = _read_config()
     commit = _git("rev-parse", "--short", "HEAD")
 
@@ -133,16 +155,14 @@ def write_version_file() -> Path | None:
         return None
 
     base = version_file.read_text(encoding="utf-8").strip()
-    raw = os.environ.get("RELEASE_TYPE", "dev").strip().lower()
-    if raw not in ("dev", "rc", "stable"):
-        raise ValueError(f"RELEASE_TYPE must be 'dev', 'rc', or 'stable' — got: {raw!r}")
+    raw = cfg.release_type
 
     if raw == "stable":
         version = base
     elif raw == "rc":
         version = f"{base}rc1"
     else:
-        dev_template = os.environ.get("BUILDSTAMP_DEV_VERSION", "{base}.dev0")
+        dev_template = cfg.dev_version_template
         try:
             version = dev_template.format(base=base, sha=commit)
         except (KeyError, ValueError) as exc:
@@ -169,8 +189,8 @@ def write_version_file() -> Path | None:
     return metadata_file
 
 
-def _cleanup_metadata_file(metadata_file: Path | None) -> None:
-    if metadata_file is None or not _is_git_checkout() or _force_write():
+def _cleanup_metadata_file(metadata_file: Path | None, force_write: bool) -> None:
+    if metadata_file is None or not _is_git_checkout() or force_write:
         return
 
     with contextlib.suppress(FileNotFoundError):
@@ -181,27 +201,30 @@ def _cleanup_metadata_file(metadata_file: Path | None) -> None:
 
 
 def prepare_metadata_for_build_wheel(metadata_directory, config_settings=None):
-    metadata_file = write_version_file()
+    cfg = _BuildConfig.from_env()
+    metadata_file = write_version_file(cfg)
     try:
         return _prepare_wheel(metadata_directory, config_settings)
     finally:
-        _cleanup_metadata_file(metadata_file)
+        _cleanup_metadata_file(metadata_file, cfg.force_write)
 
 
 def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):
-    metadata_file = write_version_file()
+    cfg = _BuildConfig.from_env()
+    metadata_file = write_version_file(cfg)
     try:
         return _build_wheel(wheel_directory, config_settings, metadata_directory)
     finally:
-        _cleanup_metadata_file(metadata_file)
+        _cleanup_metadata_file(metadata_file, cfg.force_write)
 
 
 def build_sdist(sdist_directory, config_settings=None):
-    metadata_file = write_version_file()
+    cfg = _BuildConfig.from_env()
+    metadata_file = write_version_file(cfg)
     try:
         return _build_sdist(sdist_directory, config_settings)
     finally:
-        _cleanup_metadata_file(metadata_file)
+        _cleanup_metadata_file(metadata_file, cfg.force_write)
 
 
 def prepare_metadata_for_build_editable(metadata_directory, config_settings=None):
@@ -209,14 +232,16 @@ def prepare_metadata_for_build_editable(metadata_directory, config_settings=None
         prepare_metadata_for_build_editable as _prepare_editable,
     )
 
-    if not _is_git_checkout() or _force_write():
-        write_version_file()
+    cfg = _BuildConfig.from_env()
+    if not _is_git_checkout() or cfg.force_write:
+        write_version_file(cfg)
     return _prepare_editable(metadata_directory, config_settings)
 
 
 def build_editable(wheel_directory, config_settings=None, metadata_directory=None):
     from setuptools.build_meta import build_editable as _build_editable
 
-    if not _is_git_checkout() or _force_write():
-        write_version_file()
+    cfg = _BuildConfig.from_env()
+    if not _is_git_checkout() or cfg.force_write:
+        write_version_file(cfg)
     return _build_editable(wheel_directory, config_settings, metadata_directory)

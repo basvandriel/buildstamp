@@ -88,7 +88,7 @@ def test_build_wheel_keeps_metadata_file_when_force_write(tmp_path: Path) -> Non
 
     with (
         patch.object(backend, "_is_git_checkout", return_value=True),
-        patch.object(backend, "_force_write", return_value=True),
+        patch.dict(os.environ, {"BUILDSTAMP_FORCE_WRITE": "1"}, clear=False),
         patch.object(backend, "_git", return_value="abc1234"),
         patch.object(backend, "_read_config", return_value=(metadata_file, version_file, {})),
         patch.object(backend, "_build_wheel", return_value="ok") as build_wheel,
@@ -103,7 +103,7 @@ def test_build_wheel_keeps_metadata_file_when_force_write(tmp_path: Path) -> Non
 def test_build_editable_force_write_in_git_checkout() -> None:
     with (
         patch.object(backend, "_is_git_checkout", return_value=True),
-        patch.object(backend, "_force_write", return_value=True),
+        patch.dict(os.environ, {"BUILDSTAMP_FORCE_WRITE": "1"}, clear=False),
         patch.object(backend, "write_version_file") as write_file,
         patch("setuptools.build_meta.build_editable", return_value="ok"),
     ):
