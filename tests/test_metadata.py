@@ -44,9 +44,6 @@ def test_build_metadata_build_date_zone_conversion() -> None:
     assert local.timestamp() == build_date.timestamp()
     assert local.tzinfo is not None
 
-    amsterdam = meta.build_date_in_zone("Europe/Amsterdam")
-    assert amsterdam.isoformat() == "2026-04-10T14:00:00+02:00"
-
 
 # ---------------------------------------------------------------------------
 # load_metadata — git checkout path

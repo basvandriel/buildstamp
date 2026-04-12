@@ -24,12 +24,6 @@ class BuildMetadata:
             return None
         return self.build_date.astimezone()
 
-    def build_date_in_zone(self, zone: str) -> datetime | None:
-        """Return the build date converted to the requested timezone."""
-        if self.build_date is None:
-            return None
-        return self.build_date.astimezone(ZoneInfo(zone))
-
 
 def _use_baked_metadata() -> bool:
     return envvar_to_bool("BUILDSTAMP_USE_BUILD_JSON")
