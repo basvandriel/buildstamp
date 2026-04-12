@@ -5,7 +5,6 @@ import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 from buildstamp.env import envvar_to_bool, load_dotenv
 
