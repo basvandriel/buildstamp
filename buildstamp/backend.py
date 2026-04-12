@@ -39,6 +39,9 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+from buildstamp.env import envvar_to_bool, load_dotenv
+
+
 from setuptools.build_meta import (
     build_sdist as _build_sdist,
 )
@@ -108,28 +111,11 @@ def _is_git_checkout() -> bool:
     return Path(".git").exists()
 
 
-def _load_dotenv(root: Path) -> None:
-    dotenv_path = root / ".env"
-    if not dotenv_path.exists():
-        return
-
-    try:
-        import dotenv
-
-        dotenv.load_dotenv(dotenv_path, override=False)
-    except ImportError:
-        return
-
-
-def _envvar_to_bool(name: str) -> bool:
-    return os.environ.get(name, "").strip().lower() not in ("", "0", "false", "no")
-
-
-_load_dotenv(Path(__file__).resolve().parent.parent)
+load_dotenv(Path(__file__).resolve().parent.parent)
 
 
 def _force_write() -> bool:
-    return _envvar_to_bool("BUILDSTAMP_FORCE_WRITE")
+    return envvar_to_bool("BUILDSTAMP_FORCE_WRITE")
 
 
 def write_version_file() -> Path | None:
