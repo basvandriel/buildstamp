@@ -39,9 +39,6 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
-from buildstamp.env import envvar_to_bool, load_dotenv
-
-
 from setuptools.build_meta import (
     build_sdist as _build_sdist,
 )
@@ -56,6 +53,8 @@ from setuptools.build_meta import (
 from setuptools.build_meta import (
     prepare_metadata_for_build_wheel as _prepare_wheel,
 )
+
+from buildstamp.env import envvar_to_bool, load_dotenv
 
 __all__ = [
     "build_editable",
@@ -80,7 +79,7 @@ def _read_config() -> tuple[Path, Path, dict[str, object]]:
     """Return (metadata_file, version_file, buildstamp_config) from pyproject.toml."""
     try:
         try:
-            import tomllib
+            import tomllib  # type: ignore
         except ImportError:
             import tomli as tomllib  # type: ignore[no-redef]
 

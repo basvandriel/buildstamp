@@ -17,7 +17,7 @@ def clear_build_json_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("BUILDSTAMP_USE_BAKED_METADATA", raising=False)
 
 
-from buildstamp._metadata import BuildMetadata, load_metadata
+from buildstamp._metadata import BuildMetadata, load_metadata  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # BuildMetadata
