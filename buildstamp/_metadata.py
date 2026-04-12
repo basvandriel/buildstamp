@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from buildstamp.env import envvar_to_bool, load_dotenv
+from buildstamp.env import envvar_to_bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,7 +54,6 @@ def load_metadata(package_file: str | Path) -> BuildMetadata:
     """
     package_dir = Path(package_file).parent
     repo_root = package_dir.parent
-    load_dotenv(repo_root)
 
     if (repo_root / ".git").exists() and not _use_baked_metadata():
         base = (repo_root / "VERSION").read_text(encoding="utf-8").strip()

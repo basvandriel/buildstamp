@@ -116,6 +116,10 @@ def test_load_metadata_uses_dotenv(tmp_path: Path) -> None:
         )
     )
 
+    # dotenv loading is caller-controlled; load it before calling load_metadata
+    from buildstamp.env import load_dotenv
+
+    load_dotenv(tmp_path)
     meta = load_metadata(pkg / "__init__.py")
 
     assert meta.version == "1.2.3"

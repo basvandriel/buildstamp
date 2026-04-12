@@ -110,7 +110,7 @@ def _is_git_checkout() -> bool:
     return Path(".git").exists()
 
 
-load_dotenv(Path(__file__).resolve().parent.parent)
+load_dotenv(Path.cwd())
 
 
 def _force_write() -> bool:
