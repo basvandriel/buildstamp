@@ -108,8 +108,24 @@ def _is_git_checkout() -> bool:
     return Path(".git").exists()
 
 
+def _load_dotenv(root: Path) -> None:
+    dotenv_path = root / ".env"
+    if not dotenv_path.exists():
+        return
+
+    try:
+        import dotenv
+
+        dotenv.load_dotenv(dotenv_path, override=False)
+    except ImportError:
+        return
+
+
 def _envvar_to_bool(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() not in ("", "0", "false", "no")
+
+
+_load_dotenv(Path(__file__).resolve().parent.parent)
 
 
 def _force_write() -> bool:
@@ -169,7 +185,7 @@ def write_version_file() -> Path | None:
 
 
 def _cleanup_metadata_file(metadata_file: Path | None) -> None:
-    if metadata_file is None or not _is_git_checkout():
+    if metadata_file is None or not _is_git_checkout() or _force_write():
         return
 
     with contextlib.suppress(FileNotFoundError):

@@ -28,6 +28,7 @@ dev = [
     "ruff>=0.9",
     "pyright>=1.1",
     "twine>=5",
+    "python-dotenv>=1.0",
 ]
 
 [project.urls]
@@ -68,4 +69,5 @@ testpaths = ["tests"]
 [dependency-groups]
 dev = [
     "setuptools>=82.0.1",
+    "python-dotenv>=1.0",
 ]

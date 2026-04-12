@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def clear_build_json_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("BUILDSTAMP_USE_BUILD_JSON", raising=False)
+    monkeypatch.delenv("BUILDSTAMP_USE_BAKED_METADATA", raising=False)
+
 
 from buildstamp._metadata import BuildMetadata, load_metadata
 
@@ -65,6 +73,60 @@ def test_load_metadata_git_checkout(tmp_path: Path) -> None:
     assert meta.quality == "dev"
     assert meta.commit == "abc1234"
     assert meta.build_date is None
+
+
+def test_load_metadata_uses_baked_json_in_git_checkout_with_env(tmp_path: Path) -> None:
+    (tmp_path / ".git").mkdir()
+    pkg = tmp_path / "mypkg"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("")
+    (tmp_path / "VERSION").write_text("1.2.3\n")
+    build_date = "2026-04-10T12:00:00+00:00"
+    (pkg / "_build.json").write_text(
+        json.dumps(
+            {
+                "version": "1.2.3",
+                "quality": "stable",
+                "commit": "abc1234",
+                "build_date": build_date,
+            }
+        )
+    )
+
+    with patch.dict(os.environ, {"BUILDSTAMP_USE_BUILD_JSON": "1"}, clear=False):
+        meta = load_metadata(pkg / "__init__.py")
+
+    assert meta.version == "1.2.3"
+    assert meta.quality == "stable"
+    assert meta.commit == "abc1234"
+    assert meta.build_date == datetime.fromisoformat(build_date)
+
+
+def test_load_metadata_uses_dotenv(tmp_path: Path) -> None:
+    (tmp_path / ".git").mkdir()
+    pkg = tmp_path / "mypkg"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("")
+    (tmp_path / "VERSION").write_text("1.2.3\n")
+    (tmp_path / ".env").write_text("BUILDSTAMP_USE_BUILD_JSON=1\n")
+    build_date = "2026-04-10T12:00:00+00:00"
+    (pkg / "_build.json").write_text(
+        json.dumps(
+            {
+                "version": "1.2.3",
+                "quality": "stable",
+                "commit": "abc1234",
+                "build_date": build_date,
+            }
+        )
+    )
+
+    meta = load_metadata(pkg / "__init__.py")
+
+    assert meta.version == "1.2.3"
+    assert meta.quality == "stable"
+    assert meta.commit == "abc1234"
+    assert meta.build_date == datetime.fromisoformat(build_date)
 
 
 def test_load_metadata_git_unknown_sha(tmp_path: Path) -> None:

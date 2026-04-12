@@ -146,7 +146,29 @@ uv run twine check dist/*
 ```
 
 That gives you a fully manual inspection path: the wheel is just a zip archive, `_build.json` is extracted directly, and the UTC build timestamp can be converted to local display time.
+### Optional in-repo runtime validation
 
+If you want to exercise the baked metadata path from inside a git checkout, first generate `_build.json` and keep it in the repo:
+
+```sh
+BUILDSTAMP_FORCE_WRITE=1 uv build --no-build-isolation
+```
+
+Then run Python with the baked-metadata override:
+
+```sh
+BUILDSTAMP_USE_BUILD_JSON=1 python - <<'PY'
+from buildstamp import load_metadata
+import buildstamp
+
+meta = load_metadata(buildstamp.__file__)
+print(meta)
+PY
+```
+
+`BUILDSTAMP_USE_BUILD_JSON` is the name to use for in-repo baked metadata testing.
+
+That lets you verify the same `_build.json`-based runtime behavior without leaving the checkout.
 ## Inspect the installed artifact in Python runtime
 
 To verify the same baked metadata from an installed package, install the wheel into a fresh environment and use `load_metadata()`:

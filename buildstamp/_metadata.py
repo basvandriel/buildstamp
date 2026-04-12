@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime
@@ -29,6 +30,27 @@ class BuildMetadata:
         return self.build_date.astimezone(ZoneInfo(zone))
 
 
+def _envvar_to_bool(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() not in ("", "0", "false", "no")
+
+
+def _load_dotenv(root: Path) -> None:
+    dotenv_path = root / ".env"
+    if not dotenv_path.exists():
+        return
+
+    try:
+        import dotenv
+
+        dotenv.load_dotenv(dotenv_path, override=False)
+    except ImportError:
+        return
+
+
+def _use_baked_metadata() -> bool:
+    return _envvar_to_bool("BUILDSTAMP_USE_BUILD_JSON")
+
+
 def _run_git(*args: str) -> str:
     try:
         return subprocess.check_output(["git", *args], stderr=subprocess.DEVNULL, text=True).strip()
@@ -55,8 +77,9 @@ def load_metadata(package_file: str | Path) -> BuildMetadata:
     """
     package_dir = Path(package_file).parent
     repo_root = package_dir.parent
+    _load_dotenv(repo_root)
 
-    if (repo_root / ".git").exists():
+    if (repo_root / ".git").exists() and not _use_baked_metadata():
         base = (repo_root / "VERSION").read_text(encoding="utf-8").strip()
         sha = _run_git("rev-parse", "--short", "HEAD")
         version = f"{base}+g{sha}" if sha != "unknown" else f"{base}.dev0"
