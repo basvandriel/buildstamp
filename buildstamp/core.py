@@ -29,7 +29,9 @@ def git_short_sha(root: Path | None = None) -> str:
         return "unknown"
 
 
-def render_version(base: str, sha: str, release_type: ReleaseType, dev_version_template: str) -> str:
+def render_version(
+    base: str, sha: str, release_type: ReleaseType, dev_version_template: str
+) -> str:
     if release_type == "stable":
         return base
     if release_type == "rc":
@@ -45,7 +47,9 @@ def render_version(base: str, sha: str, release_type: ReleaseType, dev_version_t
         ) from exc
 
 
-def build_metadata_payload(version: str, quality: str, commit: str, build_date: datetime | None) -> MetadataPayload:
+def build_metadata_payload(
+    version: str, quality: str, commit: str, build_date: datetime | None
+) -> MetadataPayload:
     if build_date is None:
         build_date = datetime.now(timezone.utc)
 
@@ -57,11 +61,12 @@ def build_metadata_payload(version: str, quality: str, commit: str, build_date: 
     }
 
 
-def write_metadata_file(metadata_file: Path, version: str, quality: str, commit: str, build_date: datetime | None) -> Path:
+def write_metadata_file(
+    metadata_file: Path, version: str, quality: str, commit: str, build_date: datetime | None
+) -> Path:
     metadata_file.parent.mkdir(parents=True, exist_ok=True)
     metadata_file.write_text(
-        json.dumps(build_metadata_payload(version, quality, commit, build_date), indent=2)
-        + "\n",
+        json.dumps(build_metadata_payload(version, quality, commit, build_date), indent=2) + "\n",
         encoding="utf-8",
     )
     return metadata_file

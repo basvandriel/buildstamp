@@ -70,10 +70,14 @@ def main(argv: list[str] | None = None) -> int:
 
     raw_release_type = args.release_type or os.environ.get("RELEASE_TYPE", "dev").strip().lower()
     if raw_release_type not in ("dev", "rc", "stable"):
-        raise ValueError(f"RELEASE_TYPE must be 'dev', 'rc', or 'stable' — got: {raw_release_type!r}")
+        raise ValueError(
+            f"RELEASE_TYPE must be 'dev', 'rc', or 'stable' — got: {raw_release_type!r}"
+        )
     release_type = cast(ReleaseType, raw_release_type)
 
-    dev_version_template = args.dev_version_template or os.environ.get("BUILDSTAMP_DEV_VERSION", "{base}.dev0")
+    dev_version_template = args.dev_version_template or os.environ.get(
+        "BUILDSTAMP_DEV_VERSION", "{base}.dev0"
+    )
     force_write = args.force_write or envvar_to_bool("BUILDSTAMP_FORCE_WRITE")
 
     metadata_file = root / args.metadata_file

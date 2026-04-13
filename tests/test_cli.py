@@ -11,15 +11,17 @@ from buildstamp.cli import main
 def test_cli_write_creates_metadata(tmp_path: Path) -> None:
     (tmp_path / "VERSION").write_text("1.2.3\n")
 
-    result = main([
-        "write",
-        "--root",
-        str(tmp_path),
-        "--metadata-file",
-        "mypkg/_build.json",
-        "--version-file",
-        "VERSION",
-    ])
+    result = main(
+        [
+            "write",
+            "--root",
+            str(tmp_path),
+            "--metadata-file",
+            "mypkg/_build.json",
+            "--version-file",
+            "VERSION",
+        ]
+    )
 
     assert result == 0
     metadata_path = tmp_path / "mypkg" / "_build.json"

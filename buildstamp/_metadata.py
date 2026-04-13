@@ -56,7 +56,9 @@ def _run_git(*args: str) -> str:
         return "unknown"
 
 
-def load_metadata(package_file: str | Path, *, config: _LoadMetadataConfig | None = None) -> BuildMetadata:
+def load_metadata(
+    package_file: str | Path, *, config: _LoadMetadataConfig | None = None
+) -> BuildMetadata:
     """Load version metadata for a package.
 
     Call from your package's __init__.py:

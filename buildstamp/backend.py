@@ -68,6 +68,7 @@ from buildstamp.env import envvar_to_bool, load_dotenv
 def _git() -> str:
     return git_short_sha(Path.cwd())
 
+
 __all__ = [
     "build_editable",
     "build_sdist",
