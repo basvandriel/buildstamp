@@ -28,8 +28,7 @@ def _traverse(data: dict[str, object], key_path: list[str], source: Path) -> str
             )
         if key not in node:
             raise ValueError(
-                f"buildstamp: key '{key}' not found in {source} "
-                f"at path '{'.'.join(key_path)}'"
+                f"buildstamp: key '{key}' not found in {source} at path '{'.'.join(key_path)}'"
             )
         node = node[key]
     if not isinstance(node, str):

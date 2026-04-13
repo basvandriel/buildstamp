@@ -29,7 +29,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--version-source",
         default="pyproject.toml",
         help="Path to the version source file relative to the project root. "
-             "Supports pyproject.toml, package.json, or any plain text file (e.g. VERSION).",
+        "Supports pyproject.toml, package.json, or any plain text file (e.g. VERSION).",
     )
     parser.add_argument(
         "--metadata-file",
