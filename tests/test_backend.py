@@ -51,7 +51,7 @@ def test_build_wheel_cleans_metadata_file_in_git_checkout(tmp_path: Path) -> Non
     with (
         patch.object(backend, "_is_git_checkout", return_value=True),
         patch.object(backend, "_git", return_value="abc1234"),
-        patch.object(backend, "_read_config", return_value=(metadata_file, version_file, {})),
+        patch.object(backend, "_read_config", return_value=(metadata_file, str(version_file), {})),
         patch.object(backend, "_build_wheel", return_value="ok") as build_wheel,
     ):
         result = backend.build_wheel("wheel-dir", None, None)
@@ -70,7 +70,7 @@ def test_build_sdist_cleans_metadata_file_in_git_checkout(tmp_path: Path) -> Non
     with (
         patch.object(backend, "_is_git_checkout", return_value=True),
         patch.object(backend, "_git", return_value="abc1234"),
-        patch.object(backend, "_read_config", return_value=(metadata_file, version_file, {})),
+        patch.object(backend, "_read_config", return_value=(metadata_file, str(version_file), {})),
         patch.object(backend, "_build_sdist", return_value="ok") as build_sdist,
     ):
         result = backend.build_sdist("sdist-dir", None)
@@ -90,7 +90,7 @@ def test_build_wheel_keeps_metadata_file_when_force_write(tmp_path: Path) -> Non
         patch.object(backend, "_is_git_checkout", return_value=True),
         patch.dict(os.environ, {"BUILDSTAMP_FORCE_WRITE": "1"}, clear=False),
         patch.object(backend, "_git", return_value="abc1234"),
-        patch.object(backend, "_read_config", return_value=(metadata_file, version_file, {})),
+        patch.object(backend, "_read_config", return_value=(metadata_file, str(version_file), {})),
         patch.object(backend, "_build_wheel", return_value="ok") as build_wheel,
     ):
         result = backend.build_wheel("wheel-dir", None, None)
@@ -124,7 +124,7 @@ def test_prepare_metadata_for_build_wheel_cleans_metadata_file_in_git_checkout(
     with (
         patch.object(backend, "_is_git_checkout", return_value=True),
         patch.object(backend, "_git", return_value="abc1234"),
-        patch.object(backend, "_read_config", return_value=(metadata_file, version_file, {})),
+        patch.object(backend, "_read_config", return_value=(metadata_file, str(version_file), {})),
         patch.object(backend, "_prepare_wheel", return_value="ok") as prepare_wheel,
     ):
         result = backend.prepare_metadata_for_build_wheel("metadata-dir", None)
@@ -142,7 +142,7 @@ def test_write_version_file_uses_dev_version_env_var(tmp_path: Path) -> None:
 
     with (
         patch.object(backend, "_git", return_value="abc1234"),
-        patch.object(backend, "_read_config", return_value=(metadata_file, version_file, {})),
+        patch.object(backend, "_read_config", return_value=(metadata_file, str(version_file), {})),
         patch.dict(
             os.environ,
             {"BUILDSTAMP_DEV_VERSION": "{base}+g{sha}", "RELEASE_TYPE": "dev"},

@@ -6,26 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from buildstamp.config import MetadataLoadConfig
 from buildstamp.core import load_metadata_json
-from buildstamp.env import envvar_to_bool, load_dotenv
-
-
-@dataclass(frozen=True, slots=True)
-class _LoadMetadataConfig:
-    is_git_checkout: bool
-    use_build_json: bool
-
-    @classmethod
-    def from_env(cls, root: Path) -> _LoadMetadataConfig:
-        load_dotenv(root)
-        return cls(
-            is_git_checkout=(root / ".git").exists(),
-            use_build_json=envvar_to_bool("BUILDSTAMP_USE_BUILD_JSON"),
-        )
-
-    @property
-    def use_baked_metadata(self) -> bool:
-        return not self.is_git_checkout or self.use_build_json
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,7 +39,7 @@ def _run_git(*args: str) -> str:
 
 
 def load_metadata(
-    package_file: str | Path, *, config: _LoadMetadataConfig | None = None
+    package_file: str | Path, *, config: MetadataLoadConfig | None = None
 ) -> BuildMetadata:
     """Load version metadata for a package.
 
@@ -77,7 +59,7 @@ def load_metadata(
     """
     package_dir = Path(package_file).parent
     repo_root = package_dir.parent
-    config = config or _LoadMetadataConfig.from_env(repo_root)
+    config = config or MetadataLoadConfig.from_env(repo_root)
 
     if config.use_baked_metadata:
         meta = load_metadata_json(package_dir / "_build.json")

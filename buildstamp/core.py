@@ -4,14 +4,91 @@ import json
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal
 
-ReleaseType = Literal["dev", "rc", "stable"]
+from buildstamp.config import ReleaseType
+
 MetadataPayload = dict[str, str]
 
+# Default dotted key paths for known structured file formats.
+_DEFAULT_KEYS: dict[str, str] = {
+    "pyproject.toml": "project.version",
+    "Cargo.toml": "package.version",
+    "package.json": "version",
+}
 
-def read_version_file(version_file: Path) -> str:
-    return version_file.read_text(encoding="utf-8").strip()
+
+def _traverse(data: dict[str, object], key_path: list[str], source: Path) -> str:
+    """Walk *data* using *key_path* segments and return the string value."""
+    node: object = data
+    for key in key_path:
+        if not isinstance(node, dict):
+            raise ValueError(
+                f"buildstamp: expected a mapping while traversing "
+                f"'{'.'.join(key_path)}' in {source}"
+            )
+        if key not in node:
+            raise ValueError(
+                f"buildstamp: key '{key}' not found in {source} "
+                f"at path '{'.'.join(key_path)}'"
+            )
+        node = node[key]
+    if not isinstance(node, str):
+        raise ValueError(
+            f"buildstamp: version at '{'.'.join(key_path)}' in {source} "
+            f"must be a string, got {type(node).__name__}"
+        )
+    return node
+
+
+def read_version_source(spec: str, root: Path) -> str:
+    """Read the project version from *spec* relative to *root*.
+
+    Spec format: ``<file>[:<dotted.key.path>]``
+
+    Examples::
+
+        pyproject.toml                       # default key: project.version
+        pyproject.toml:tool.poetry.version   # Poetry layout
+        package.json                         # default key: version
+        Cargo.toml                           # default key: package.version
+        Cargo.toml:workspace.package.version # Cargo workspace
+        VERSION                              # plain text file
+    """
+    file_part, _, key_spec = spec.partition(":")
+    key_path: list[str] | None = key_spec.split(".") if key_spec else None
+
+    file = root / file_part
+    suffix = file.suffix  # ".toml", ".json", ""
+
+    if suffix == ".toml":
+        try:
+            import tomllib  # type: ignore[import-untyped]
+        except ImportError:
+            import tomli as tomllib  # type: ignore[no-redef]
+
+        with file.open("rb") as fh:
+            data: dict[str, object] = tomllib.load(fh)
+
+        resolved = key_path or _DEFAULT_KEYS.get(file.name, "").split(".") or None
+        if not resolved or resolved == [""]:
+            raise ValueError(
+                f"buildstamp: no key path for {file} — "
+                "specify one with 'filename.toml:<dotted.key>'"
+            )
+        return _traverse(data, resolved, file)
+
+    if suffix == ".json":
+        data = json.loads(file.read_text(encoding="utf-8"))
+        resolved = key_path or _DEFAULT_KEYS.get(file.name, "").split(".") or None
+        if not resolved or resolved == [""]:
+            raise ValueError(
+                f"buildstamp: no key path for {file} — "
+                "specify one with 'filename.json:<dotted.key>'"
+            )
+        return _traverse(data, resolved, file)
+
+    # Plain text file (VERSION, .version, or any other extension)
+    return file.read_text(encoding="utf-8").strip()
 
 
 def git_short_sha(root: Path | None = None) -> str:

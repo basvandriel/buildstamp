@@ -1,19 +1,17 @@
 from __future__ import annotations
 
 import argparse
-import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import cast
 
+from buildstamp.config import BuildConfig, ReleaseType
 from buildstamp.core import (
-    ReleaseType,
     git_short_sha,
-    read_version_file,
+    read_version_source,
     render_version,
     write_metadata_file,
 )
-from buildstamp.env import envvar_to_bool, load_dotenv
+from buildstamp.env import load_dotenv
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -28,9 +26,10 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Project root directory for .env and VERSION file.",
     )
     parser.add_argument(
-        "--version-file",
-        default="VERSION",
-        help="Path to the version source file relative to the project root.",
+        "--version-source",
+        default="pyproject.toml",
+        help="Path to the version source file relative to the project root. "
+             "Supports pyproject.toml, package.json, or any plain text file (e.g. VERSION).",
     )
     parser.add_argument(
         "--metadata-file",
@@ -68,28 +67,27 @@ def main(argv: list[str] | None = None) -> int:
     if not args.no_dotenv:
         load_dotenv(root)
 
-    raw_release_type = args.release_type or os.environ.get("RELEASE_TYPE", "dev").strip().lower()
-    if raw_release_type not in ("dev", "rc", "stable"):
-        raise ValueError(
-            f"RELEASE_TYPE must be 'dev', 'rc', or 'stable' — got: {raw_release_type!r}"
-        )
-    release_type = cast(ReleaseType, raw_release_type)
-
-    dev_version_template = args.dev_version_template or os.environ.get(
-        "BUILDSTAMP_DEV_VERSION", "{base}.dev0"
+    cfg = BuildConfig.from_options(
+        release_type=args.release_type,
+        dev_version_template=args.dev_version_template,
+        force_write=args.force_write,
     )
-    force_write = args.force_write or envvar_to_bool("BUILDSTAMP_FORCE_WRITE")
 
     metadata_file = root / args.metadata_file
-    version_file = root / args.version_file
     commit = git_short_sha(root)
 
-    if commit == "unknown" and metadata_file.exists() and not force_write:
+    if commit == "unknown" and metadata_file.exists() and not cfg.force_write:
         return 0
 
-    base = read_version_file(version_file)
-    version = render_version(base, commit, release_type, dev_version_template)
-    write_metadata_file(metadata_file, version, release_type, commit, datetime.now(timezone.utc))
+    base = read_version_source(args.version_source, root)
+    version = render_version(base, commit, cfg.release_type, cfg.dev_version_template)
+    write_metadata_file(
+        metadata_file,
+        version,
+        cfg.release_type,
+        commit,
+        datetime.now(timezone.utc),
+    )
     return 0
 
 

@@ -16,7 +16,7 @@ If not present, the package name is derived from [project].name.
 
     [tool.buildstamp]
     metadata-file = "your_package/_build.json"   # optional override
-    version-file  = "VERSION"                       # optional override (default: VERSION)
+    version-source = "pyproject.toml"               # optional override (default: pyproject.toml)
 
 For dev builds, override the generated artifact version via env var:
 
@@ -55,14 +55,14 @@ from setuptools.build_meta import (
 
 from typing import cast
 
+from buildstamp.config import BuildConfig, ReleaseType
 from buildstamp.core import (
-    ReleaseType,
     git_short_sha,
-    read_version_file,
+    read_version_source,
     render_version,
     write_metadata_file,
 )
-from buildstamp.env import envvar_to_bool, load_dotenv
+from buildstamp.env import load_dotenv
 
 
 def _git() -> str:
@@ -96,20 +96,16 @@ class _BuildConfig:
 
     @classmethod
     def from_env(cls, root: Path) -> _BuildConfig:
-        load_dotenv(root)
-        raw = os.environ.get("RELEASE_TYPE", "dev").strip().lower()
-        if raw not in ("dev", "rc", "stable"):
-            raise ValueError(f"RELEASE_TYPE must be 'dev', 'rc', or 'stable' — got: {raw!r}")
-        release_type = cast(ReleaseType, raw)
+        config = BuildConfig.from_env(root)
         return cls(
-            release_type=release_type,
-            dev_version_template=os.environ.get("BUILDSTAMP_DEV_VERSION", "{base}.dev0"),
-            force_write=envvar_to_bool("BUILDSTAMP_FORCE_WRITE"),
+            release_type=config.release_type,
+            dev_version_template=config.dev_version_template,
+            force_write=config.force_write,
         )
 
 
-def _read_config() -> tuple[Path, Path, dict[str, object]]:
-    """Return (metadata_file, version_file, buildstamp_config) from pyproject.toml."""
+def _read_config() -> tuple[Path, str, dict[str, object]]:
+    """Return (metadata_file, version_source_spec, buildstamp_config) from pyproject.toml."""
     try:
         try:
             import tomllib  # type: ignore
@@ -122,15 +118,16 @@ def _read_config() -> tuple[Path, Path, dict[str, object]]:
         raise RuntimeError(f"buildstamp: could not read pyproject.toml — {e}") from e
 
     bs = config.get("tool", {}).get("buildstamp", {})
-    version_file = Path(bs.get("version-file", "VERSION"))
+    # Accept both the new key and the old one for backward compatibility.
+    version_source: str = bs.get("version-source") or bs.get("version-file", "pyproject.toml")  # type: ignore[assignment]
 
     if "metadata-file" in bs:
-        return Path(bs["metadata-file"]), version_file, bs
+        return Path(bs["metadata-file"]), version_source, bs
 
     # Derive from [project].name: rsync-server → rsync_server/_build.json
     try:
         name = config["project"]["name"].replace("-", "_")
-        return Path(name) / "_build.json", version_file, bs
+        return Path(name) / "_build.json", version_source, bs
     except KeyError as exc:
         raise RuntimeError(
             "buildstamp: could not determine metadata file path. "
@@ -153,14 +150,14 @@ def write_version_file(cfg: _BuildConfig | None = None) -> Path | None:
     """
     if cfg is None:
         cfg = _BuildConfig.from_env(Path.cwd())
-    metadata_file, version_file, _bs = _read_config()
+    metadata_file, version_source, _bs = _read_config()
     commit = _git()
 
     # sdist → wheel: no .git dir, reuse the JSON baked in during the sdist step.
     if commit == "unknown" and metadata_file.exists():
         return None
 
-    base = read_version_file(version_file)
+    base = read_version_source(version_source, Path.cwd())
     version = render_version(base, commit, cfg.release_type, cfg.dev_version_template)
     return write_metadata_file(
         metadata_file,
