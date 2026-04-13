@@ -31,6 +31,9 @@ dev = [
     "python-dotenv>=1.0",
 ]
 
+[project.scripts]
+buildstamp = "buildstamp.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/basvandriel/buildstamp"
 Repository = "https://github.com/basvandriel/buildstamp"

@@ -1,12 +1,31 @@
 from __future__ import annotations
 
-import json
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
-from buildstamp.env import envvar_to_bool
+from buildstamp.core import load_metadata_json
+from buildstamp.env import envvar_to_bool, load_dotenv
+
+
+@dataclass(frozen=True, slots=True)
+class _LoadMetadataConfig:
+    is_git_checkout: bool
+    use_build_json: bool
+
+    @classmethod
+    def from_env(cls, root: Path) -> _LoadMetadataConfig:
+        load_dotenv(root)
+        return cls(
+            is_git_checkout=(root / ".git").exists(),
+            use_build_json=envvar_to_bool("BUILDSTAMP_USE_BUILD_JSON"),
+        )
+
+    @property
+    def use_baked_metadata(self) -> bool:
+        return not self.is_git_checkout or self.use_build_json
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,9 +42,11 @@ class BuildMetadata:
             return None
         return self.build_date.astimezone()
 
-
-def _use_baked_metadata() -> bool:
-    return envvar_to_bool("BUILDSTAMP_USE_BUILD_JSON")
+    def build_date_in_zone(self, zone: str) -> datetime | None:
+        """Return the build date converted to the requested timezone."""
+        if self.build_date is None:
+            return None
+        return self.build_date.astimezone(ZoneInfo(zone))
 
 
 def _run_git(*args: str) -> str:
@@ -35,7 +56,7 @@ def _run_git(*args: str) -> str:
         return "unknown"
 
 
-def load_metadata(package_file: str | Path) -> BuildMetadata:
+def load_metadata(package_file: str | Path, *, config: _LoadMetadataConfig | None = None) -> BuildMetadata:
     """Load version metadata for a package.
 
     Call from your package's __init__.py:
@@ -54,18 +75,19 @@ def load_metadata(package_file: str | Path) -> BuildMetadata:
     """
     package_dir = Path(package_file).parent
     repo_root = package_dir.parent
+    config = config or _LoadMetadataConfig.from_env(repo_root)
 
-    if (repo_root / ".git").exists() and not _use_baked_metadata():
-        base = (repo_root / "VERSION").read_text(encoding="utf-8").strip()
-        sha = _run_git("rev-parse", "--short", "HEAD")
-        version = f"{base}+g{sha}" if sha != "unknown" else f"{base}.dev0"
+    if config.use_baked_metadata:
+        meta = load_metadata_json(package_dir / "_build.json")
+        return BuildMetadata(
+            version=meta["version"],
+            quality=meta["quality"],
+            commit=meta["commit"],
+            build_date=datetime.fromisoformat(meta["build_date"]),
+        )
 
-        return BuildMetadata(version=version, quality="dev", commit=sha, build_date=None)
+    base = (repo_root / "VERSION").read_text(encoding="utf-8").strip()
+    sha = _run_git("rev-parse", "--short", "HEAD")
+    version = f"{base}+g{sha}" if sha != "unknown" else f"{base}.dev0"
 
-    meta = json.loads((package_dir / "_build.json").read_text(encoding="utf-8"))
-    return BuildMetadata(
-        version=meta["version"],
-        quality=meta["quality"],
-        commit=meta["commit"],
-        build_date=datetime.fromisoformat(meta["build_date"]),
-    )
+    return BuildMetadata(version=version, quality="dev", commit=sha, build_date=None)
